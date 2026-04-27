@@ -149,7 +149,7 @@ export default function ChatPanel({
     setError(null);
     setIsLoading(prev => ({ ...prev, [targetRole]: true }));
     setStreamingText(prev => ({ ...prev, [targetRole]: '' }));
-    streamParsedPaths.current[targetRole][targetRole] = new Set();
+    streamParsedPaths.current[targetRole] = new Set();
 
     if (!isRetry) {
       setPendingUserMsg(userText);
@@ -635,7 +635,7 @@ function PromptInput({ role, isLoading, onSend, onStop, hasConceptContext, proje
           <span className="prompt-hint">⌘↵</span>
         </div>
 
-        {isLoading ? (
+        {isLoading[activeRole] ? (
           <button className="send-btn send-btn-stop" onClick={onStop} title="Stop generation">
             <span className="stop-icon">⬛</span>
           </button>

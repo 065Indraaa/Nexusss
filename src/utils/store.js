@@ -107,7 +107,7 @@ export function hashApiKey(key) {
 }
 
 // ── Storage ────────────────────────────────────────────────
-const STORAGE_KEY = 'nexus_ai_v2';
+const STORAGE_KEY = 'hog_ai_v1';
 
 function loadData() {
   try {
@@ -124,7 +124,7 @@ export function saveData(data) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch (err) {
-    console.error('NEXUS Storage Error:', err);
+    console.error('HOG Storage Error:', err);
     if (err.name === 'QuotaExceededError' || err.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
       alert('⚠️ STORAGE FULL! Delete some old projects or clear chat history to continue.');
     }

@@ -27,7 +27,7 @@ export default function Header({ activeProject, onSettings, onToggleSidebar, sid
 
       <div className="header-logo">
         <span className="header-logo-icon">⬡</span>
-        <span className="header-logo-text">NEXUS AI</span>
+        <span className="header-logo-text">HOG ai AI</span>
       </div>
 
       {activeProject && (

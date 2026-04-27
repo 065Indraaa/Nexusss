@@ -1,82 +1,23 @@
-# ⬡ NEXUS AI — Multi-Role Dev Platform
+# HOG ai (Hand Of God ai)
 
-Dark futuristic AI coding assistant with 3 interconnected agents: **Concepting**, **Frontend**, **Backend**.
+Welcome to **HOG ai**, formerly known as Nexus Builder. HOG ai is an advanced, unified, framework-agnostic AI development platform designed to empower creators to build complete, production-ready web applications from scratch, purely through conversational AI.
 
-## 🚀 Quick Start
+## Why the name "Hand Of God ai"?
+The name **Hand Of God (HOG) ai** reflects the ultimate power given to the developer. With a single prompt, you can shape entire systems, architectures, and user interfaces, much like a divine hand orchestrating creation. It represents absolute creative control, seamless automation, and the ability to turn abstract ideas into tangible, functioning software instantly. 
 
-```bash
-npm install
-npm run dev
-```
+## Key Features
 
-Then open http://localhost:5173
+- **Unified Builder Agent:** HOG ai consolidates frontend and backend generation into a single, cohesive "Builder" workflow. No more manual file stitching; the AI generates everything in one pass.
+- **Concept-to-Build Handoff:** Start with the *Concepting Agent* to flesh out your idea into a robust specification. Once approved, seamlessly hand it over to the *Builder Agent* to write the code.
+- **Auto-Continue Regeneration:** Never worry about code cutoffs again. HOG ai intelligently detects if a response is incomplete due to token limits and automatically resumes from the exact character, ensuring your files are always whole.
+- **Interactive Modern UI:** A fully responsive, glassmorphism-inspired interface with fluid animations, realtime streaming feedback, and an intuitive project workspace.
+- **Background Multitasking:** Switch between Concept and Builder tabs without interrupting the AI's generation process. The streams are maintained independently in the background.
+- **Realtime File Parsing:** Watch as your project structure is built in real-time. HOG ai parses markdown code blocks dynamically and builds your file tree on the fly.
 
-## 🔑 API Key Setup
+## Technology Stack
+- **Frontend Engine:** React 18 + Vite
+- **Styling:** Custom CSS Custom Properties (Variables) with Glassmorphism and micro-animations
+- **AI Integration:** Direct streaming API communication with support for large context windows up to 16,000 characters.
+- **State Management:** LocalStorage with robust error handling and per-role state separation.
 
-1. Go to [build.nvidia.com](https://build.nvidia.com)
-2. Sign in / Register
-3. Click **Get API Key** on any model
-4. Copy the `nvapi-...` key
-5. Paste it in NEXUS AI Settings (⚙)
-
-## 📦 Models Used
-
-| Role | Model | Why |
-|------|-------|-----|
-| **Concepting** | `meta/llama-3.3-70b-instruct` | Best reasoning & creativity for design specs |
-| **Frontend** | `mistralai/devstral-2-123b-instruct-2512` | Largest dedicated coding model by Mistral |
-| **Backend** | `deepseek-ai/deepseek-v3.2` | Best logic, API design, and backend patterns |
-
-## 🌐 Deploy to Vercel
-
-```bash
-npm install -g vercel
-vercel
-```
-
-Or connect your GitHub repo to Vercel — `vercel.json` is pre-configured.
-
-## 🗂 Project Structure
-
-```
-nexus-ai/
-├── src/
-│   ├── components/
-│   │   ├── Header.jsx         # Top bar
-│   │   ├── Sidebar.jsx        # Project list
-│   │   ├── ChatPanel.jsx      # Main chat with role tabs
-│   │   ├── Message.jsx        # Message + code blocks
-│   │   ├── SettingsModal.jsx  # API key & settings
-│   │   └── NewProjectModal.jsx
-│   ├── utils/
-│   │   └── store.js           # localStorage + NVIDIA API
-│   ├── styles/
-│   │   ├── globals.css        # CSS variables + base
-│   │   └── app.css            # Component styles
-│   ├── App.jsx
-│   └── main.jsx
-├── public/
-│   └── nexus-icon.svg
-├── index.html
-├── vite.config.js
-├── vercel.json
-└── package.json
-```
-
-## ✨ Features
-
-- **3 Interconnected Agents** — Concept → Frontend → Backend memory flow
-- **Streaming responses** — Real-time token streaming from NVIDIA NIM
-- **Auto-retry** — Up to 3 retries with exponential backoff
-- **Syntax highlighting** — 100+ languages via Prism
-- **Code download** — Download any code block as file
-- **Stop generation** — Cancel mid-stream
-- **Project memory** — All conversations saved in localStorage
-- **Context injection** — Backend reads Frontend reads Concept automatically
-
-## 🎨 Design
-
-Dark futuristic theme inspired by Vercel + Linear.
-- JetBrains Mono (headings)
-- Inter (body)
-- Fira Code (code blocks)
+*Crafted with precision. Built for the future.*

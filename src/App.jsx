@@ -264,7 +264,7 @@ function EmptyState({ onNewProject, hasApiKey, onSettings }) {
       <div className="empty-state-inner">
         <div className="empty-logo">
           <span className="empty-logo-icon">⬡</span>
-          <span className="empty-logo-text">NEXUS AI</span>
+          <span className="empty-logo-text">HOG ai</span>
         </div>
         <p className="empty-tagline">Multi-Role AI Development Platform</p>
         <p className="empty-sub">Chat on the left • Files, Preview & Terminal on the right</p>
