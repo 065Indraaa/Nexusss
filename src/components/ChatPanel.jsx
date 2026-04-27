@@ -116,7 +116,7 @@ export default function ChatPanel({
       }
 
       // Detect "lanjutkan" / "continue" — inject a resume instruction
-      const isResume = /^\s*(lanjutkan|continue|lanjut|next|teruskan)\s*$/i.test(userText.trim());
+      const isResume = /(?:lanjutkan|continue|lanjut|next|teruskan|lanjutin|lanjut dong|continue please|go on|more)/i.test(userText.trim()) && userText.trim().length < 30;
       if (isResume) {
         const lastAssistantMsg = [...(fresh.roles[activeRole].messages)]
           .reverse()

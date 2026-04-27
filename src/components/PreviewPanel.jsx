@@ -211,9 +211,83 @@ function TerminalPanel({ projectId }) {
   );
 }
 
+// ── HTML Preview ───────────────────────────────────────────
+function HtmlPreview({ files }) {
+  const iframeRef = useRef(null);
+
+  const combined = useMemo(() => {
+    const htmlFile = files.find(f => f.lang === 'html' || f.path.endsWith('.html'));
+    const cssFiles = files.filter(f => f.lang === 'css' || f.path.endsWith('.css'));
+    const jsFiles = files.filter(f => (f.lang === 'javascript' || f.lang === 'js') && !f.path.includes('package'));
+    const assetFiles = files.filter(f => f.path.startsWith('assets/'));
+
+    if (!htmlFile) {
+      const css = cssFiles.map(f => `<style>\n${f.content}\n</style>`).join('\n');
+      const js = jsFiles.map(f => `<script>\n${f.content}\n</script>`).join('\n');
+      return `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">${css}</head><body>${js}</body></html>`;
+    }
+
+    let html = htmlFile.content || '';
+    cssFiles.forEach(cssFile => {
+      const tag = `<link rel="stylesheet" href="${cssFile.path.split('/').pop()}">`;
+      html = html.includes(tag)
+        ? html.replace(tag, `<style>\n${cssFile.content}\n</style>`)
+        : html.replace('</head>', `<style>\n${cssFile.content}\n</style>\n</head>`);
+    });
+    jsFiles.forEach(jsFile => {
+      const tag = `<script src="${jsFile.path.split('/').pop()}"></script>`;
+      const tagWithDefer = `<script src="${jsFile.path.split('/').pop()}" defer></script>`;
+      html = html.includes(tag)
+        ? html.replace(tag, `<script>\n${jsFile.content}\n</script>`)
+        : html.includes(tagWithDefer)
+        ? html.replace(tagWithDefer, `<script>\n${jsFile.content}\n</script>`)
+        : html.replace('</body>', `<script>\n${jsFile.content}\n</script>\n</body>`);
+    });
+    assetFiles.forEach(asset => {
+      const filename = asset.path.split('/').pop();
+      [asset.path, `./${asset.path}`, filename].forEach(sp => {
+        html = html.replace(new RegExp(`src=["']${sp}["']`, 'g'), `src="${asset.content}"`);
+      });
+    });
+    return html;
+  }, [files]);
+
+  useEffect(() => {
+    if (iframeRef.current && combined) {
+        // Use srcdoc instead of document.write for better stability
+        iframeRef.current.srcdoc = combined;
+    }
+  }, [combined]);
+
+  return (
+    <div className="html-preview" style={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: '#fff' }}>
+      <div className="preview-toolbar" style={{ display: 'flex', gap: '8px', padding: '8px', background: '#f5f5f5', borderBottom: '1px solid #ddd' }}>
+        <span className="preview-toolbar-label" style={{ fontWeight: 600, color: '#333', flex: 1 }}>🌐 Live Preview</span>
+        <button className="btn btn-ghost btn-sm" onClick={() => {
+          const blob = new Blob([combined], { type: 'text/html' });
+          window.open(URL.createObjectURL(blob), '_blank');
+        }} style={{ color: '#0066cc', cursor: 'pointer', background: 'transparent', border: 'none' }}>↗ Open in Tab</button>
+        <button className="btn btn-ghost btn-sm" onClick={() => {
+          if (iframeRef.current) {
+            iframeRef.current.srcdoc = combined + '<!-- refreshed ' + Date.now() + ' -->';
+          }
+        }} style={{ color: '#0066cc', cursor: 'pointer', background: 'transparent', border: 'none' }}>↺ Refresh</button>
+      </div>
+      <iframe
+        ref={iframeRef}
+        className="preview-iframe"
+        sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+        title="Live Preview"
+        style={{ width: '100%', height: '100%', border: 'none', flex: 1 }}
+      />
+    </div>
+  );
+}
+
 // ── StackBlitz Preview ───────────────────────────────────────────
 function StackBlitzPreview({ files, projectType, projectName, projectDesc }) {
   const containerRef = useRef(null);
+  const vmRef = useRef(null);
 
   useEffect(() => {
     if (!files || files.length === 0 || !containerRef.current) return;
@@ -226,9 +300,18 @@ function StackBlitzPreview({ files, projectType, projectName, projectDesc }) {
       sbFiles[path] = f.content;
     });
 
+    if (vmRef.current) {
+        // VM already exists, just apply diffs so it doesn't blink/reload entirely
+        vmRef.current.applyFsDiff({
+            create: sbFiles,
+            destroy: []
+        }).catch(err => console.error("StackBlitz diff error", err));
+        return;
+    }
+
     let template = 'node';
     if (projectType === 'html') template = 'html';
-    else if (projectType === 'react') template = 'create-react-app';
+    else if (projectType === 'react') template = 'create-react-app'; // StackBlitz natively supports create-react-app
     else if (projectType === 'vue') template = 'node';
 
     // Embed StackBlitz project
@@ -247,15 +330,26 @@ function StackBlitzPreview({ files, projectType, projectName, projectDesc }) {
       hideDevTools: false,
       hideExplorer: true,
       forceEmbedLayout: true
+    }).then(vm => {
+        vmRef.current = vm;
+    }).catch(err => {
+        console.error("Failed to embed StackBlitz block", err);
     });
   }, [files, projectType, projectName, projectDesc]);
+
+  // Cleanup on unmount or project change
+  useEffect(() => {
+    return () => {
+        vmRef.current = null;
+    }
+  }, [projectName]);
 
   return <div ref={containerRef} style={{ width: '100%', height: '100%', border: 'none', flex: 1, backgroundColor: '#0a0a0a' }} />;
 }
 
 // ── Main Preview Panel ─────────────────────────────────────
 export default function PreviewPanel({ project, activeRole, onUpdateFiles }) {
-  const [tab, setTab] = useState('files');
+  const [tab, setTab] = useState('preview');
   const [selectedFile, setSelectedFile] = useState(null);
   const [expanded, setExpanded] = useState({});
   const [copied, setCopied] = useState(false);
@@ -530,7 +624,11 @@ export default function PreviewPanel({ project, activeRole, onUpdateFiles }) {
 
         {/* PREVIEW */}
         <div style={{ display: tab === 'preview' ? 'flex' : 'none', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-          <StackBlitzPreview files={files} projectType={project?.projectType} projectName={project?.name} projectDesc={project?.description} />
+          {project?.projectType === 'html' ? (
+            <HtmlPreview files={files} />
+          ) : (
+            <StackBlitzPreview files={files} projectType={project?.projectType} projectName={project?.name} projectDesc={project?.description} />
+          )}
         </div>
 
         {/* TERMINAL */}
