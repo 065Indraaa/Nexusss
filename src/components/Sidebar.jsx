@@ -1,0 +1,132 @@
+import React from 'react';
+import { deleteProject, formatDate } from '../utils/store';
+
+const TYPE_ICONS = {
+  react: '⚛',
+  html: '⬡',
+  vue: '💚',
+  nextjs: '▲',
+  backend: '◉',
+  fullstack: '⬡',
+  default: '◻'
+};
+
+const TYPE_COLORS = {
+  react: '#61dafb',
+  html: '#f16529',
+  vue: '#42b883',
+  nextjs: '#ffffff',
+  backend: '#68a063',
+  fullstack: '#8b5cf6',
+  default: 'var(--text-muted)'
+};
+
+export default function Sidebar({ open, projects, activeProjectId, onSelect, onNewProject, onRefresh, viewMode, setViewMode }) {
+  const handleDelete = (e, id) => {
+    e.stopPropagation();
+    if (confirm('Delete this project and all its data?')) {
+      deleteProject(id);
+      onRefresh();
+    }
+  };
+
+  return (
+    <aside className={`sidebar ${open ? '' : 'closed'}`}>
+      <div className="sidebar-header">
+        <div className="sidebar-title">Global</div>
+      </div>
+      <div className="sidebar-projects">
+        <div 
+          className={`project-card ${viewMode === 'global-chat' ? 'active' : ''}`} 
+          onClick={() => setViewMode('global-chat')}
+        >
+           <div className="project-card-icon-wrapper" style={{ borderColor: 'var(--text-primary)' }}>
+             <div className="project-card-icon">🌍</div>
+           </div>
+           <div className="project-card-info" style={{ justifyContent: 'center' }}>
+             <div className="project-card-name">AI Assistant</div>
+             <div className="project-card-meta">Global Chat</div>
+           </div>
+        </div>
+      </div>
+
+      <div className="sidebar-header" style={{ marginTop: '16px' }}>
+        <div className="sidebar-title">Projects</div>
+        <button className="btn sidebar-new-btn" onClick={onNewProject}>
+          + New
+        </button>
+      </div>
+      <div className="sidebar-projects">
+        {projects.length === 0 && (
+          <div className="sidebar-empty">
+            <div className="sidebar-empty-icon">📁</div>
+            <div>No projects yet</div>
+            <div style={{ fontSize: 10, marginTop: 4, opacity: 0.6 }}>Create one to get started</div>
+          </div>
+        )}
+        {projects.map(p => (
+          <ProjectCard
+            key={p.id}
+            project={p}
+            active={p.id === activeProjectId && viewMode === 'project'}
+            onSelect={() => {
+              setViewMode('project');
+              onSelect(p.id);
+            }}
+            onDelete={(e) => handleDelete(e, p.id)}
+          />
+        ))}
+      </div>
+    </aside>
+  );
+}
+
+function ProjectCard({ project, active, onSelect, onDelete }) {
+  const conceptCount = project.roles.concept.messages.filter(m => m.role === 'user').length;
+  const frontendCount = project.roles.frontend.messages.filter(m => m.role === 'user').length;
+  const backendCount = project.roles.backend.messages.filter(m => m.role === 'user').length;
+  const totalMsgs = conceptCount + frontendCount + backendCount;
+  const fileCount = project.generatedFiles?.length || 0;
+  const typeIcon = TYPE_ICONS[project.projectType] || TYPE_ICONS.default;
+  const typeColor = TYPE_COLORS[project.projectType] || TYPE_COLORS.default;
+
+  return (
+    <div className={`project-card ${active ? 'active' : ''} animate-fade-in`} onClick={onSelect}>
+      <div className="project-card-glow" style={{ '--card-color': typeColor }} />
+      <div className="project-card-icon-wrapper" style={{ borderColor: typeColor }}>
+        <div className="project-card-icon">{typeIcon}</div>
+      </div>
+      <div className="project-card-info">
+        <div className="project-card-name-row">
+          <div className="project-card-name">{project.name}</div>
+          {fileCount > 0 && <div className="project-card-badge">{fileCount}f</div>}
+        </div>
+        <div className="project-card-meta">
+          <span>{formatDate(project.updatedAt)}</span>
+          <span className="dot">·</span>
+          <span>{totalMsgs} msg{totalMsgs !== 1 ? 's' : ''}</span>
+        </div>
+        <div className="project-card-roles">
+          <div
+            className="project-role-indicator"
+            style={{ '--role-color': 'var(--role-concept)', opacity: conceptCount > 0 ? 1 : 0.2 }}
+            data-active={conceptCount > 0}
+          />
+          <div
+            className="project-role-indicator"
+            style={{ '--role-color': 'var(--role-frontend)', opacity: frontendCount > 0 ? 1 : 0.2 }}
+            data-active={frontendCount > 0}
+          />
+          <div
+            className="project-role-indicator"
+            style={{ '--role-color': 'var(--role-backend)', opacity: backendCount > 0 ? 1 : 0.2 }}
+            data-active={backendCount > 0}
+          />
+        </div>
+      </div>
+      <button className="project-card-delete" onClick={onDelete} title="Delete project">
+        <span className="delete-icon">✕</span>
+      </button>
+    </div>
+  );
+}
