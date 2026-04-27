@@ -242,6 +242,14 @@ Continue IMMEDIATELY from that exact point. Just the next line of code.`;
       setPendingUserMsg(null);
       streamParsedPaths.current = new Set();
       onMessageSent();
+
+      // Automatically continue if the response was cut off (unclosed code block)
+      const backticksCount = (fullText.match(/```/g) || []).length;
+      if (backticksCount % 2 !== 0) {
+        setTimeout(() => {
+          sendMessage('continue');
+        }, 1000);
+      }
     } catch (err) {
       if (err.name === 'AbortError') {
         if (streamingText) {
