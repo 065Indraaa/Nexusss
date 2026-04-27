@@ -1,5 +1,5 @@
 import React from 'react';
-import { deleteProject, formatDate } from '../utils/store';
+import { deleteProject, deleteGlobalChat, formatDate } from '../utils/store';
 
 const TYPE_ICONS = {
   react: '⚛',
@@ -21,7 +21,7 @@ const TYPE_COLORS = {
   default: 'var(--text-muted)'
 };
 
-export default function Sidebar({ open, projects, activeProjectId, onSelect, onNewProject, onRefresh, viewMode, setViewMode }) {
+export default function Sidebar({ open, projects, activeProjectId, globalChats = [], activeGlobalChatId, onSelect, onSelectGlobalChat, onNewProject, onNewGlobalChat, onRefresh, viewMode, setViewMode }) {
   const handleDelete = (e, id) => {
     e.stopPropagation();
     if (confirm('Delete this project and all its data?')) {
@@ -30,24 +30,45 @@ export default function Sidebar({ open, projects, activeProjectId, onSelect, onN
     }
   };
 
+  const handleDeleteGlobalChat = (e, id) => {
+    e.stopPropagation();
+    if (confirm('Delete this chat?')) {
+      deleteGlobalChat(id);
+      onRefresh();
+    }
+  };
+
   return (
-    <aside className={`sidebar ${open ? '' : 'closed'}`}>
+    <aside className={`sidebar ${open ? '' : 'closed'}`} style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div className="sidebar-header">
         <div className="sidebar-title">Global</div>
+        <button className="btn sidebar-new-btn" onClick={onNewGlobalChat}>
+          + New Chat
+        </button>
       </div>
-      <div className="sidebar-projects">
-        <div 
-          className={`project-card ${viewMode === 'global-chat' ? 'active' : ''}`} 
-          onClick={() => setViewMode('global-chat')}
-        >
-           <div className="project-card-icon-wrapper" style={{ borderColor: 'var(--text-primary)' }}>
-             <div className="project-card-icon">🌍</div>
-           </div>
-           <div className="project-card-info" style={{ justifyContent: 'center' }}>
-             <div className="project-card-name">AI Assistant</div>
-             <div className="project-card-meta">Global Chat</div>
-           </div>
-        </div>
+      <div className="sidebar-projects" style={{ flex: '0 0 auto', maxHeight: '35vh', overflowY: 'auto' }}>
+        {globalChats.map(c => (
+          <div 
+            key={c.id}
+            className={`project-card ${viewMode === 'global-chat' && activeGlobalChatId === c.id ? 'active' : ''}`} 
+            onClick={() => onSelectGlobalChat(c.id)}
+          >
+             <div className="project-card-icon-wrapper" style={{ borderColor: 'var(--text-primary)' }}>
+               <div className="project-card-icon">🌍</div>
+             </div>
+             <div className="project-card-info">
+               <div className="project-card-name" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name || 'AI Assistant'}</div>
+               <div className="project-card-meta">{formatDate(c.updatedAt)}</div>
+             </div>
+             <button
+               className="project-delete-btn"
+               onClick={(e) => handleDeleteGlobalChat(e, c.id)}
+               title="Delete Chat"
+             >
+               ×
+             </button>
+          </div>
+        ))}
       </div>
 
       <div className="sidebar-header" style={{ marginTop: '16px' }}>
@@ -56,7 +77,7 @@ export default function Sidebar({ open, projects, activeProjectId, onSelect, onN
           + New
         </button>
       </div>
-      <div className="sidebar-projects">
+      <div className="sidebar-projects" style={{ flex: '1 1 auto', overflowY: 'auto' }}>
         {projects.length === 0 && (
           <div className="sidebar-empty">
             <div className="sidebar-empty-icon">📁</div>

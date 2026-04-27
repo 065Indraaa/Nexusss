@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getProjects, getProject, createProject, deleteProject, getSettings, saveSettings, hashApiKey } from './utils/store';
+import { getProjects, getProject, createProject, deleteProject, getSettings, saveSettings, hashApiKey, getGlobalChats, createGlobalChat } from './utils/store';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import ChatPanel from './components/ChatPanel';
@@ -12,7 +12,9 @@ import './styles/app.css';
 
 export default function App() {
   const [projects, setProjects] = useState([]);
+  const [globalChats, setGlobalChats] = useState([]);
   const [activeProjectId, setActiveProjectId] = useState(null);
+  const [activeGlobalChatId, setActiveGlobalChatId] = useState(null);
   const [activeProject, setActiveProject] = useState(null);
   const [activeRole, setActiveRole] = useState('concept');
   const [viewMode, setViewMode] = useState('project'); // 'project' or 'global-chat'
@@ -34,6 +36,16 @@ export default function App() {
     const ps = getProjects(key);
     setProjects(ps);
 
+    const chats = getGlobalChats();
+    setGlobalChats(chats);
+    if (chats.length === 0) {
+      const newChat = createGlobalChat();
+      setGlobalChats([newChat]);
+      setActiveGlobalChatId(newChat.id);
+    } else {
+      setActiveGlobalChatId(chats[0].id);
+    }
+
     if (ps.length > 0) {
       setActiveProjectId(ps[0].id);
     }
@@ -54,6 +66,8 @@ export default function App() {
   const refresh = useCallback(() => {
     const ps = getProjects(apiKey);
     setProjects(ps);
+    const chats = getGlobalChats();
+    setGlobalChats(chats);
     setRefreshTick(t => t + 1);
   }, [apiKey]);
 
@@ -118,6 +132,20 @@ export default function App() {
     window.addEventListener('mouseup', onUp);
   }, [panelWidths]);
 
+  // ── Global Chat Handlers ────────────────────────────────
+  const handleNewGlobalChat = useCallback(() => {
+    const newChat = createGlobalChat();
+    setGlobalChats(getGlobalChats());
+    setActiveGlobalChatId(newChat.id);
+    setViewMode('global-chat');
+  }, []);
+
+  const handleSelectGlobalChat = useCallback((id) => {
+    setActiveGlobalChatId(id);
+    setViewMode('global-chat');
+    if (window.innerWidth <= 768) setSidebarOpen(false);
+  }, []);
+
   return (
     <div className="app-shell">
       <Header
@@ -139,8 +167,12 @@ export default function App() {
           open={sidebarOpen}
           projects={projects}
           activeProjectId={activeProjectId}
+          globalChats={globalChats}
+          activeGlobalChatId={activeGlobalChatId}
           onSelect={handleSelectProject}
+          onSelectGlobalChat={handleSelectGlobalChat}
           onNewProject={() => setShowNewProject(true)}
+          onNewGlobalChat={handleNewGlobalChat}
           onRefresh={refresh}
           viewMode={viewMode}
           setViewMode={setViewMode}
@@ -149,7 +181,7 @@ export default function App() {
         <main className="main-content">
           {viewMode === 'global-chat' ? (
             <div style={{ height: '100%', width: '100%', display: 'flex', background: 'var(--bg-deep)' }}>
-              <GlobalChat apiKey={apiKey} onNeedApiKey={() => setShowSettings(true)} />
+              <GlobalChat apiKey={apiKey} onNeedApiKey={() => setShowSettings(true)} activeGlobalChatId={activeGlobalChatId} onRefreshChats={refresh} />
             </div>
           ) : activeProject ? (
             <div className={`panels-container ${isDragging ? 'dragging' : ''} ${mobileShowPreview ? 'mobile-show-preview' : ''}`}>

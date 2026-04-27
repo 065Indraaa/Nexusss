@@ -135,9 +135,11 @@ const STORAGE_KEY = 'nexus_ai_v2';
 function loadData() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : { projectsByKey: {}, settings: { apiKey: '' } };
+    const data = raw ? JSON.parse(raw) : { projectsByKey: {}, globalChats: [], settings: { apiKey: '' } };
+    if (!data.globalChats) data.globalChats = [];
+    return data;
   } catch {
-    return { projectsByKey: {}, settings: { apiKey: '' } };
+    return { projectsByKey: {}, globalChats: [], settings: { apiKey: '' } };
   }
 }
 
@@ -150,6 +152,48 @@ export function saveData(data) {
       alert('⚠️ STORAGE FULL! Delete some old projects or clear chat history to continue.');
     }
   }
+}
+
+// ── Global Chat CRUD ───────────────────────────────────────
+export function getGlobalChats() {
+  const data = loadData();
+  return data.globalChats || [];
+}
+
+export function createGlobalChat() {
+  const data = loadData();
+  const chat = {
+    id: uuidv4(),
+    name: 'New Chat',
+    messages: [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  data.globalChats.unshift(chat);
+  saveData(data);
+  return chat;
+}
+
+export function getGlobalChat(id) {
+  const data = loadData();
+  return data.globalChats.find(chat => chat.id === id) || null;
+}
+
+export function updateGlobalChat(id, messages, name) {
+  const data = loadData();
+  const idx = data.globalChats.findIndex(chat => chat.id === id);
+  if (idx !== -1) {
+    if (messages) data.globalChats[idx].messages = messages;
+    if (name) data.globalChats[idx].name = name;
+    data.globalChats[idx].updatedAt = new Date().toISOString();
+    saveData(data);
+  }
+}
+
+export function deleteGlobalChat(id) {
+  const data = loadData();
+  data.globalChats = data.globalChats.filter(chat => chat.id !== id);
+  saveData(data);
 }
 
 // ── Project CRUD ───────────────────────────────────────────
@@ -582,31 +626,34 @@ export async function callAI(apiKey, modelId, systemPrompt, contextMessages, use
  */
 // filename: src/utils/store.js  (replace parseFilesFromContent only)
 export function parseFilesFromContent(content, role) {
-  const regex = /```(\w+)?\n([\s\S]*?)(?:```|$)/g;
+  const regex = /```(.*?)\n([\s\S]*?)(?:```|$)/g;
   const fileMap = new Map();
 
   let match;
   while ((match = regex.exec(content)) !== null) {
     const lang = (match[1] || 'text').toLowerCase();
     const rawCode = match[2];
-    if (!rawCode.trim()) continue;
-
     const lines = rawCode.split('\n');
-    const firstLine = lines[0].trim();
-    // Updated regex to support (continuation) suffix
-    const filenameMatch = firstLine.match(
-      /^(?:\/\/|#|\/\*|<!--|--)\s*filename:\s*(.+?)(?:\s*\(continuation\))?\s*(?:\*\/|-->)?\s*$/i
-    );
+    let filenameMatch = null;
+    let filename = '';
+    let isContinuation = false;
+    let codeStartIndex = 0;
+
+    for (let i = 0; i < Math.min(lines.length, 5); i++) {
+        const line = lines[i].trim();
+        const m = line.match(/^(?:\/\/|#|\/\*|<!--|--)\s*file(?:name)?:\s*(.+?)(?:\s*\(continuation\))?\s*(?:\*\/|-->)?\s*$/i);
+        if (m) {
+            filenameMatch = m;
+            isContinuation = line.toLowerCase().includes('(continuation)');
+            filename = m[1].trim().replace(/\\/g, '/').replace(/^\.\//, '').replace(/^\/+/, '');
+            codeStartIndex = i + 1;
+            break;
+        }
+    }
 
     if (!filenameMatch) continue;
 
-    const isContinuation = firstLine.toLowerCase().includes('(continuation)');
-    let filename = filenameMatch[1].trim()
-      .replace(/\\/g, '/')
-      .replace(/^\.\//, '')
-      .replace(/^\/+/, '');
-
-    const code = lines.slice(1).join('\n').trimStart();
+    const code = lines.slice(codeStartIndex).join('\n').trimStart();
     if (!code.trim()) continue;
 
     // MERGE logic within parseFilesFromContent
@@ -626,7 +673,7 @@ export function parseFilesFromContent(content, role) {
 }
 
 export function extractCodeBlocks(text) {
-  const regex = /```(\w+)?\n([\s\S]*?)```/g;
+  const regex = /```(.*?)\n([\s\S]*?)```/g;
   const blocks = [];
   let match;
   while ((match = regex.exec(text)) !== null) {

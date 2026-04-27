@@ -12,7 +12,7 @@ const MAX_RETRIES = 3;
 // Parses COMPLETE code blocks only (closes with ```) from partial stream text.
 // Returns only newly-completed blocks not yet seen.
 function parseCompletedBlocksFromStream(text, alreadyParsedPaths) {
-  const regex = /```(\w+)?\n([\s\S]*?)```/g;
+  const regex = /```(.*?)\n([\s\S]*?)```/g;
   const newFiles = [];
   const seenInThisCall = new Set(alreadyParsedPaths);
   let match;
@@ -20,26 +20,30 @@ function parseCompletedBlocksFromStream(text, alreadyParsedPaths) {
   while ((match = regex.exec(text)) !== null) {
     const lang = (match[1] || 'text').toLowerCase();
     const rawCode = match[2];
-    if (!rawCode.trim()) continue;
-
     const lines = rawCode.split('\n');
-    const firstLine = lines[0].trim();
-    const filenameMatch = firstLine.match(
-      /^(?:\/\/|#|\/\*|<!--|--)\s*filename:\s*(.+?)(?:\s*\(continuation\))?\s*(?:\*\/|-->)?\s*$/i
-    );
+    let filenameMatch = null;
+    let filename = '';
+    let isContinuation = false;
+    let codeStartIndex = 0;
+
+    for (let i = 0; i < Math.min(lines.length, 5); i++) {
+        const line = lines[i].trim();
+        const m = line.match(/^(?:\/\/|#|\/\*|<!--|--)\s*file(?:name)?:\s*(.+?)(?:\s*\(continuation\))?\s*(?:\*\/|-->)?\s*$/i);
+        if (m) {
+            filenameMatch = m;
+            isContinuation = line.toLowerCase().includes('(continuation)');
+            filename = m[1].trim().replace(/\\/g, '/').replace(/^\.\//, '').replace(/^\/+/, '');
+            codeStartIndex = i + 1;
+            break;
+        }
+    }
+
     if (!filenameMatch) continue;
-
-    const isContinuation = firstLine.toLowerCase().includes('(continuation)');
-
-    let filename = filenameMatch[1].trim()
-      .replace(/\\/g, '/')
-      .replace(/^\.\//, '')
-      .replace(/^\/+/, '');
 
     if (seenInThisCall.has(filename)) continue;
     seenInThisCall.add(filename);
 
-    const code = lines.slice(1).join('\n').trimStart();
+    const code = lines.slice(codeStartIndex).join('\n').trimStart();
     if (!code.trim()) continue;
 
     newFiles.push({ path: filename, content: code, lang, role: null, isContinuation });
@@ -157,20 +161,18 @@ Now continue IMMEDIATELY from that exact point. No preamble. No summary. Just th
           setStreamingText(partial);
 
           // ── Realtime file parsing during stream ──
-          if (activeRole === 'frontend' || activeRole === 'backend') {
-            const newFiles = parseCompletedBlocksFromStream(
-              partial,
-              streamParsedPaths.current
-            );
-            if (newFiles.length > 0) {
-              // Mark these paths as already pushed
-              newFiles.forEach(f => streamParsedPaths.current.add(f.path));
+          const newFiles = parseCompletedBlocksFromStream(
+            partial,
+            streamParsedPaths.current
+          );
+          if (newFiles.length > 0) {
+            // Mark these paths as already pushed
+            newFiles.forEach(f => streamParsedPaths.current.add(f.path));
 
-              // Tag with role and update immediately
-              const tagged = newFiles.map(f => ({ ...f, role: activeRole }));
-              updateProjectFiles(project.id, tagged);
-              if (onFilesGenerated) onFilesGenerated(tagged);
-            }
+            // Tag with role and update immediately
+            const tagged = newFiles.map(f => ({ ...f, role: activeRole }));
+            updateProjectFiles(project.id, tagged);
+            if (onFilesGenerated) onFilesGenerated(tagged);
           }
         },
         abortRef.current.signal
@@ -179,32 +181,30 @@ Now continue IMMEDIATELY from that exact point. No preamble. No summary. Just th
       // filename: src/components/ChatPanel.jsx  (inside sendMessage, after stream ends)
 
       // Final parse after stream ends — only handle files with filename comments
-      if (activeRole === 'frontend' || activeRole === 'backend') {
-        const allFiles = parseFilesFromContent(fullText, activeRole);
+      const allFiles = parseFilesFromContent(fullText, activeRole);
 
-        // Split into: files not yet pushed vs already pushed (need content update)
-        const unpushed = allFiles.filter(f => !streamParsedPaths.current.has(f.path));
-        const alreadyPushed = allFiles.filter(f => streamParsedPaths.current.has(f.path));
+      // Split into: files not yet pushed vs already pushed (need content update)
+      const unpushed = allFiles.filter(f => !streamParsedPaths.current.has(f.path));
+      const alreadyPushed = allFiles.filter(f => streamParsedPaths.current.has(f.path));
 
-        // Push new files
-        if (unpushed.length > 0) {
-          updateProjectFiles(project.id, unpushed);
-          if (onFilesGenerated) onFilesGenerated(unpushed);
-        }
+      // Push new files
+      if (unpushed.length > 0) {
+        updateProjectFiles(project.id, unpushed);
+        if (onFilesGenerated) onFilesGenerated(unpushed);
+      }
 
-        // Update existing files (content may be longer now that stream is complete)
-        // Only update if the final content is actually longer than what was streamed
-        if (alreadyPushed.length > 0) {
-          const fresh2 = getProject(project.id);
-          const currentFiles = fresh2?.generatedFiles || [];
-          const toUpdate = alreadyPushed.filter(f => {
-            const existing = currentFiles.find(cf => cf.path === f.path);
-            return !existing || f.content.length > (existing.content?.length || 0);
-          });
-          if (toUpdate.length > 0) {
-            updateProjectFiles(project.id, toUpdate);
-            if (onFilesGenerated) onFilesGenerated(toUpdate);
-          }
+      // Update existing files (content may be longer now that stream is complete)
+      // Only update if the final content is actually longer than what was streamed
+      if (alreadyPushed.length > 0) {
+        const fresh2 = getProject(project.id);
+        const currentFiles = fresh2?.generatedFiles || [];
+        const toUpdate = alreadyPushed.filter(f => {
+          const existing = currentFiles.find(cf => cf.path === f.path);
+          return !existing || f.content.length > (existing.content?.length || 0);
+        });
+        if (toUpdate.length > 0) {
+          updateProjectFiles(project.id, toUpdate);
+          if (onFilesGenerated) onFilesGenerated(toUpdate);
         }
       }
 
@@ -220,7 +220,7 @@ Now continue IMMEDIATELY from that exact point. No preamble. No summary. Just th
     } catch (err) {
       if (err.name === 'AbortError') {
         // On abort, still parse whatever was streamed
-        if (streamingText && (activeRole === 'frontend' || activeRole === 'backend')) {
+        if (streamingText) {
           const partial = parseFilesFromContent(streamingText, activeRole);
           if (partial.length > 0) {
             updateProjectFiles(project.id, partial);

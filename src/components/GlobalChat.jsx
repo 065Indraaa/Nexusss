@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { callAI, formatTime } from '../utils/store';
+import { callAI, formatTime, getGlobalChat, updateGlobalChat } from '../utils/store';
 
 const MODELS = [
   { id: 'moonshotai/kimi-k2.5', label: 'Kimi (moonshotai/kimi-k2.5)' },
@@ -15,7 +15,7 @@ CRITICAL RULE: Always reply in the exact same language the user uses.
 If they speak in Indonesian, reply in natural, fluent Indonesian.
 Provide concise responses unless specifically asked for detail.`;
 
-export default function GlobalChat({ apiKey, onNeedApiKey }) {
+export default function GlobalChat({ apiKey, onNeedApiKey, activeGlobalChatId, onRefreshChats }) {
   const [messages, setMessages] = useState([]);
   const [inputMsg, setInputMsg] = useState('');
   const [selectedModel, setSelectedModel] = useState(MODELS[0].id);
@@ -27,10 +27,38 @@ export default function GlobalChat({ apiKey, onNeedApiKey }) {
   const abortRef = useRef(null);
 
   useEffect(() => {
+    if (activeGlobalChatId) {
+      const chat = getGlobalChat(activeGlobalChatId);
+      if (chat) {
+        setMessages(chat.messages || []);
+      } else {
+        setMessages([]);
+      }
+      setInputMsg('');
+      setStreamingText('');
+      setError(null);
+      setIsLoading(false);
+    }
+  }, [activeGlobalChatId]);
+
+  useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, streamingText]);
+
+  const saveMessages = (newMessages) => {
+    setMessages(newMessages);
+    updateGlobalChat(activeGlobalChatId, newMessages);
+    // Optionally update name based on first user message
+    if (newMessages.length === 1 && newMessages[0].role === 'user') {
+      const name = newMessages[0].content.slice(0, 30) + (newMessages[0].content.length > 30 ? '...' : '');
+      updateGlobalChat(activeGlobalChatId, null, name);
+      onRefreshChats();
+    } else {
+      updateGlobalChat(activeGlobalChatId, newMessages, null);
+    }
+  };
 
   const handleSend = async () => {
     if (!apiKey) {
@@ -46,12 +74,13 @@ export default function GlobalChat({ apiKey, onNeedApiKey }) {
     setStreamingText('');
 
     const newMsg = { role: 'user', content: userText, timestamp: new Date().toISOString() };
-    setMessages(prev => [...prev, newMsg]);
+    const loadingMessages = [...messages, newMsg];
+    saveMessages(loadingMessages);
 
     abortRef.current = new AbortController();
 
     try {
-      const context = messages.map(m => ({ role: m.role, content: m.content })).slice(-20);
+      const context = loadingMessages.map(m => ({ role: m.role, content: m.content })).slice(-20);
       
       const fullText = await callAI(
         apiKey,
@@ -65,12 +94,12 @@ export default function GlobalChat({ apiKey, onNeedApiKey }) {
         abortRef.current.signal
       );
 
-      setMessages(prev => [...prev, { role: 'assistant', content: fullText, timestamp: new Date().toISOString() }]);
+      saveMessages([...loadingMessages, { role: 'assistant', content: fullText, timestamp: new Date().toISOString() }]);
       setStreamingText('');
     } catch (err) {
       if (err.name === 'AbortError') {
         if (streamingText) {
-          setMessages(prev => [...prev, { role: 'assistant', content: streamingText, timestamp: new Date().toISOString() }]);
+          saveMessages([...loadingMessages, { role: 'assistant', content: streamingText, timestamp: new Date().toISOString() }]);
         }
         setStreamingText('');
       } else {
