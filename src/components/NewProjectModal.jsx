@@ -72,6 +72,14 @@ const PROJECT_TYPES = [
     desc: 'React frontend + Express backend · Monorepo',
     tech: 'React · Vite · Express · SQLite',
     color: '#8b5cf6'
+  },
+  {
+    id: 'python',
+    label: 'Python App',
+    icon: '🐍',
+    desc: 'Python scripts or APIs',
+    tech: 'Python 3 · requirements.txt',
+    color: '#3776ab'
   }
 ];
 

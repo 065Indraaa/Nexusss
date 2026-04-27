@@ -39,10 +39,14 @@
   /* ── Role Colors (vivid, distinctive) ── */
   --role-concept: #fbbf24;
   --role-concept-bg: rgba(251, 191, 36, 0.10);
+  --role-builder: #a855f7;
+  --role-builder-bg: rgba(168, 85, 247, 0.10);
+  /* legacy kept for GlobalChat compatibility */
   --role-frontend: #34d399;
   --role-frontend-bg: rgba(52, 211, 153, 0.10);
   --role-backend: #60a5fa;
   --role-backend-bg: rgba(96, 165, 250, 0.10);
+
 
   /* ── Borders ── */
   --border: rgba(255, 255, 255, 0.06);

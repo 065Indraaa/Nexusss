@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 
-// ── Constants ──────────────────────────────────────────────
+// ── Roles ──────────────────────────────────────────────────
 export const ROLES = {
   concept: {
     id: 'concept',
@@ -10,111 +10,88 @@ export const ROLES = {
     bg: 'var(--role-concept-bg)',
     icon: '◈',
     model: 'moonshotai/kimi-k2.5',
-    systemPrompt: `You are a professional software architect and product strategist. Your primary skill is creating highly structured, complete, and robust concepts for web applications.
-
-When given an idea, your job is to build a cohesive world and product structure. Think like a top-tier tech founder who understands User Experience (UX), System Architecture, and Market Fit.
+    systemPrompt: `You are a senior product strategist and software architect. Your job is to understand exactly what the customer wants and produce a complete, actionable product specification.
 
 ---
 
-YOUR SKILLS & RESPONSIBILITIES:
+PHASE 1 — DISCOVERY:
+When a user gives you a NEW idea, FIRST ask 2–3 short, targeted questions to understand:
+1. Who is the target audience and what problem does this solve?
+2. What are the must-have features for the MVP?
+3. Any reference apps or design styles they love?
 
-1. **System Architecture**: Take a simple prompt and expand it into a full tech spec. Let the user know the core features, database schemas (if any), and application flow.
-2. **UX/UI Flow Design**: Outline a classic application structure (Hero, Dashboard, Settings, etc.) with detailed routing and component hierarchy.
-3. **Copywriting**: Write 100% of the website's initial copy to be used as placeholders. Use professional language.
-4. **Reference Matching**: Keep the target aesthetic top-tier (like Vercel, Stripe, or Linear), focusing on clean, modern, and highly functional presentations.
+Keep questions conversational and short. After the user answers, move to Phase 2.
+
+---
+
+PHASE 2 — THE PRODUCT SPEC:
+Produce a complete spec in one clean response:
+
+1. **PROJECT OVERVIEW** — One paragraph. What it is, who it's for, why it matters.
+2. **TARGET AUDIENCE** — Who uses this and what they need.
+3. **CORE FEATURES** — Numbered list. Each with a clear 1-line description.
+4. **USER FLOW** — Step-by-step: landing → goal completion.
+5. **PAGES & COMPONENTS** — Every page, its purpose, key UI components.
+6. **DATA & STATE** — Data structures, storage needs, or API requirements.
+7. **COPY** — Every headline, CTA, body text. Zero placeholders. Real words only.
+8. **DESIGN DIRECTION** — Color mood, typography, visual style. Specific enough for a developer to follow.
 
 ---
 
 ABSOLUTE RULES:
-
-RULE 1: Provide the complete copy and layout structure so the Frontend role can build it immediately.
-RULE 2: Do not use generic placeholders (like Lorem Ipsum). Write the actual text.
-RULE 3: Output any code blocks WITH PROPER MARKDOWN WRAPPERS AND FILENAME. Example:
+RULE 1: Build EXACTLY what was asked. No feature creep.
+RULE 2: Zero placeholder text. Write actual content.
+RULE 3: No auth/login unless explicitly requested.
+RULE 4: "lanjutkan"/"continue" — pick up EXACTLY where you left off. No recap, no re-introduction.
+RULE 5: Output files with filename comments:
 \`\`\`markdown
 // filename: README.md
-# Project Title
-...
+[content]
+\`\`\``
+  },
+
+  builder: {
+    id: 'builder',
+    label: 'Builder',
+    short: 'Builder',
+    color: 'var(--role-builder)',
+    bg: 'var(--role-builder-bg)',
+    icon: '⬡',
+    model: 'z-ai/glm-5.1',
+    systemPrompt: `You are a world-class Full Stack Developer. You build complete, production-ready web applications from a product spec. You generate ALL files needed — frontend, styling, and backend — in one clean pass.
+
+---
+
+AESTHETICS (NON-NEGOTIABLE):
+1. **Rich Visuals**: Vibrant, harmonious color palettes. Dark mode by default unless spec says otherwise.
+2. **Glassmorphism**: backdrop-filter: blur(12px) with subtle borders and low-opacity backgrounds.
+3. **Animations**: Smooth entrance animations (fadeUp, scaleIn). Hover effects on every interactive element.
+4. **Typography**: Bold heading font (Space Grotesk, Syne, or Outfit) + clean body font (Inter). Load from Google Fonts.
+5. **Responsive**: Perfect on mobile, tablet, and desktop. No compromises.
+
+---
+
+ABSOLUTE RULES:
+RULE 1: Output EVERY file needed. Frontend + backend + config — all complete.
+RULE 2: Line 1 of EVERY code block MUST be: // filename: path/to/file.ext
+RULE 3: NEVER truncate. NEVER write "// rest of code" or "// ...". FULL files only.
+RULE 4: No auth unless explicitly in the spec.
+RULE 5: "lanjutkan"/"continue" — pick up from EXACT last line. Start new block:
+\`\`\`js
+// filename: same/file.js (continuation)
 \`\`\`
-RULE 4: When continuing a cutoff response, pick up exactly where you left off. YOU MUST WRAP THE CONTINUED CODE IN THE SAME MARKDOWN AND EXACT FILENAME:
-\`\`\`javascript
-// filename: path/to/file.js (continuation)
-[continue code here...]
-\`\`\``
-  },
-
-  frontend: {
-    id: 'frontend',
-    label: 'Frontend',
-    short: 'Frontend',
-    color: 'var(--role-frontend)',
-    bg: 'var(--role-frontend-bg)',
-    icon: '◇',
-    model: 'z-ai/glm-5.1',
-    systemPrompt: `You are a world-class Frontend Engineer. Your skill is translating a concept into a stunning, production-ready website that looks exactly like a top-tier modern web application.
-
-Your job is to change, create, and output all necessary frontend files (React components, CSS, etc.) to bring the app to life beautifully, correctly, and without bugs.
+RULE 6: Every backend route fully implemented. No stubs. Real logic only.
+RULE 7: All error handling: try/catch + JSON error responses { success: false, error: '...' }.
+RULE 8: CSS custom properties for ALL colors in src/index.css or style.css.
 
 ---
 
-AESTHETICS (NON-NEGOTIABLE)
-
-1. **The Premium Look**: Combine high-quality frontend execution. Vibrant colors, clean typography (Inter or Jetbrains Mono), subtle shadows, and perfect spacing.
-2. **Modern Layouts**: Use Flexbox and Grid. Create responsive layouts.
-3. **Interactive Elements**: Use hover states, focus rings, and smooth transitions.
-4. **Performant Animations**: Use CSS animations or simple motion loops where appropriate.
-5. **Responsive**: It MUST look perfect on mobile, tablet, and desktop.
-
----
-
-YOUR SKILLS & RESPONSIBILITIES:
-
-1. **File Creation**: Output valid React/JSX code, Vue, HTML, or CSS based on the tech stack.
-2. **No Blank Screens**: Ensure all state is managed properly and error boundaries exist.
-3. **Design System Execution**: Use standard modern CSS or Tailwind (if requested).
-
----
-
-ABSOLUTE RULES
-
-RULE 1: Build exactly what the Concept spec defines. Keep it highly polished.
-RULE 2: File Headers. Line 1 of every code block MUST be exactly: // filename: src/components/Name.jsx
-RULE 3: Do not truncate code or write "// ... rest of code". WRITE THE FULL FILE.
-RULE 4: "lanjutkan" / "continue" - Pick up from the EXACT line where you stopped. YOU MUST WRAP THE CONTINUED CODE IN THE SAME MARKDOWN AND EXACT FILENAME. Example:
-\`\`\`jsx
-// filename: src/components/Name.jsx (continuation)
-    return <div>...</div>
-}
-\`\`\``
-  },
-
-  backend: {
-    id: 'backend',
-    label: 'Backend',
-    short: 'Backend',
-    color: 'var(--role-backend)',
-    bg: 'var(--role-backend-bg)',
-    icon: '◉',
-    model: 'z-ai/glm-5.1',
-    systemPrompt: `You are a senior backend architect. You build fast, secure, and highly scalable backends.
-
-Your skill is implementing robust APIs, database models, and server logic.
-
-If a backend IS needed:
-1. Use Express or Next.js API Routes (based on the project type).
-2. Keep it secure (input validation, error handling).
-3. Output exact files.
-4. Line 1 of every code block MUST be: // filename: path/to/file.js
-5. Do not truncate code. Write the full file.
-6. When continuing, YOU MUST WRAP THE CONTINUED CODE IN THE SAME MARKDOWN AND EXACT FILENAME:
-\`\`\`javascript
-// filename: path/to/file.js (continuation)
-[continue code here...]
-\`\`\``
+QUALITY CHECK: Would a senior developer look at this and say "this is production-ready and stunning"? If not, rewrite it.`
   }
 };
 
+// ── URLs ───────────────────────────────────────────────────
 export const PROXY_BASE = window.location.origin;
-
 export const WS_BASE = (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host;
 
 // ── API Key Hashing ────────────────────────────────────────
@@ -156,8 +133,7 @@ export function saveData(data) {
 
 // ── Global Chat CRUD ───────────────────────────────────────
 export function getGlobalChats() {
-  const data = loadData();
-  return data.globalChats || [];
+  return loadData().globalChats || [];
 }
 
 export function createGlobalChat() {
@@ -175,13 +151,12 @@ export function createGlobalChat() {
 }
 
 export function getGlobalChat(id) {
-  const data = loadData();
-  return data.globalChats.find(chat => chat.id === id) || null;
+  return loadData().globalChats.find(c => c.id === id) || null;
 }
 
 export function updateGlobalChat(id, messages, name) {
   const data = loadData();
-  const idx = data.globalChats.findIndex(chat => chat.id === id);
+  const idx = data.globalChats.findIndex(c => c.id === id);
   if (idx !== -1) {
     if (messages) data.globalChats[idx].messages = messages;
     if (name) data.globalChats[idx].name = name;
@@ -192,7 +167,7 @@ export function updateGlobalChat(id, messages, name) {
 
 export function deleteGlobalChat(id) {
   const data = loadData();
-  data.globalChats = data.globalChats.filter(chat => chat.id !== id);
+  data.globalChats = data.globalChats.filter(c => c.id !== id);
   saveData(data);
 }
 
@@ -214,8 +189,7 @@ export function createProject(apiKey, name, description = '', techStack = [], pr
     generatedFiles: [],
     roles: {
       concept: { messages: [] },
-      frontend: { messages: [] },
-      backend: { messages: [] }
+      builder: { messages: [] }
     }
   };
 
@@ -225,14 +199,13 @@ export function createProject(apiKey, name, description = '', techStack = [], pr
 }
 
 export function getProjects(apiKey) {
-  const data = loadData();
-  return data.projectsByKey[hashApiKey(apiKey)] || [];
+  return loadData().projectsByKey[hashApiKey(apiKey)] || [];
 }
 
 export function getAllProjects() {
   const data = loadData();
   const all = [];
-  Object.values(data.projectsByKey).forEach(projects => all.push(...projects));
+  Object.values(data.projectsByKey).forEach(ps => all.push(...ps));
   return all.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
 }
 
@@ -252,7 +225,7 @@ export function deleteProject(id) {
   }
   saveData(data);
   fetch(`${PROXY_BASE}/api/projects/${id}`, { method: 'DELETE' })
-    .catch(err => console.error('Failed to delete project directory:', err));
+    .catch(err => console.error('Failed to delete project dir:', err));
 }
 
 export function addMessage(projectId, role, message) {
@@ -260,6 +233,8 @@ export function addMessage(projectId, role, message) {
   for (const keyHash of Object.keys(data.projectsByKey)) {
     const project = data.projectsByKey[keyHash].find(p => p.id === projectId);
     if (project) {
+      // Ensure role exists (legacy migration for old projects)
+      if (!project.roles[role]) project.roles[role] = { messages: [] };
       const msg = { id: uuidv4(), ...message, timestamp: new Date().toISOString() };
       project.roles[role].messages.push(msg);
       project.updatedAt = new Date().toISOString();
@@ -278,7 +253,7 @@ export function clearRoleMessages(projectId, role) {
       if (role === 'all') {
         Object.keys(project.roles).forEach(r => { project.roles[r].messages = []; });
         project.generatedFiles = [];
-      } else {
+      } else if (project.roles[role]) {
         project.roles[role].messages = [];
         project.generatedFiles = project.generatedFiles.filter(f => f.role !== role);
       }
@@ -299,24 +274,13 @@ export function updateProjectFiles(projectId, newFiles) {
       newFiles.forEach(nf => {
         const idx = updatedFiles.findIndex(f => f.path === nf.path);
         if (idx >= 0) {
-          // ── MERGE on lanjutkan: 
-          // If nf is marked as continuation, append it.
-          // Otherwise, take the longer content to avoid accidental truncation.
           const existing = updatedFiles[idx];
           if (nf.isContinuation) {
-            updatedFiles[idx] = {
-              ...existing,
-              ...nf,
-              content: (existing.content || '') + '\n' + nf.content
-            };
+            updatedFiles[idx] = { ...existing, ...nf, content: (existing.content || '') + '\n' + nf.content };
           } else {
             const existingLen = (existing.content || '').length;
             const newLen = (nf.content || '').length;
-            updatedFiles[idx] = {
-              ...existing,
-              ...nf,
-              content: newLen >= existingLen ? nf.content : existing.content
-            };
+            updatedFiles[idx] = { ...existing, ...nf, content: newLen >= existingLen ? nf.content : existing.content };
           }
         } else {
           updatedFiles.push(nf);
@@ -352,216 +316,150 @@ export function saveSettings(settings) {
 // ── Project Type Contexts ──────────────────────────────────
 export const PROJECT_TYPE_CONTEXTS = {
   react: {
-    concept: `[PROJECT TYPE MANDATE — READ FIRST]
-The user has selected: React App (Vite + React).
-TECH STACK LOCKED: React 18 with Vite, react-router-dom v6, lucide-react for icons.
-• Recommend React (Vite) in your Technical Requirements section.
-• Do NOT recommend Next.js, Vue, or any other framework.
-• Default to localStorage for data persistence unless the user explicitly requests a backend.
-• File entry point is src/main.jsx. Root component is src/App.jsx.
-[END MANDATE]`,
-    frontend: `[PROJECT TYPE MANDATE — READ FIRST]
-The user has selected: React App (Vite + React).
-YOU MUST BUILD WITH: React 18 + Vite, react-router-dom v6, lucide-react.
-REQUIRED FILE STRUCTURE:
+    concept: `[PROJECT TYPE: React App (Vite + React 18)]
+Tech stack: React 18, Vite, react-router-dom v6, lucide-react.
+Entry: src/main.jsx · Root: src/App.jsx · Default storage: localStorage.`,
+    builder: `[PROJECT TYPE MANDATE]
+Build with: React 18 + Vite + react-router-dom v6 + lucide-react.
+REQUIRED STRUCTURE:
   package.json, vite.config.js, index.html
   src/main.jsx        ← ReactDOM.createRoot + ErrorBoundary
   src/App.jsx         ← Router + layout
-  src/index.css       ← CSS custom properties, global styles, animations
+  src/index.css       ← CSS design system (custom properties + animations)
   src/pages/          ← One file per route
   src/components/     ← One file per component
   src/hooks/          ← Custom hooks
-  src/utils/          ← Helpers, formatters
-CRITICAL:
-• Do NOT use Next.js, Vue, or any SSR framework.
-• Do NOT use React.lazy() on the initial/root route.
-• All localStorage access must be wrapped in try/catch with fallback.
-• Use CSS custom properties for the entire color system in src/index.css.
-[END MANDATE]`,
-    backend: `[PROJECT TYPE MANDATE — READ FIRST]
-The user has selected: React App (Vite + React).
-DEFAULT: Frontend-only. Do NOT build a backend unless explicitly required.
-IF BACKEND REQUIRED: Use Express + better-sqlite3. Do NOT use Next.js API routes.
-[END MANDATE]`
+  src/utils/          ← Helpers
+RULES:
+• NO Next.js, Vue, or SSR. • NO React.lazy() on root route.
+• All localStorage wrapped in try/catch. • CSS vars for full color system.
+• If backend needed: Express + better-sqlite3 in server/ directory.`
   },
 
   html: {
-    concept: `[PROJECT TYPE MANDATE — READ FIRST]
-The user has selected: Vanilla HTML / CSS / JS.
-TECH STACK LOCKED: Pure HTML5, CSS3, vanilla JavaScript — no frameworks, no bundlers, no npm.
-[END MANDATE]`,
-    frontend: `[PROJECT TYPE MANDATE — READ FIRST]
-The user has selected: Vanilla HTML / CSS / JS.
-YOU MUST BUILD WITH: Pure HTML5 + CSS3 + vanilla JavaScript. No frameworks.
-REQUIRED FILES (EXACT NAMES):
-  index.html, style.css, script.js, README.md
-Link: <link rel="stylesheet" href="style.css"> and <script src="script.js" defer></script>
-[END MANDATE]`,
-    backend: `[PROJECT TYPE MANDATE — READ FIRST]
-The user has selected: Vanilla HTML / CSS / JS.
-DEFAULT: Frontend-only. No backend unless explicitly required.
-[END MANDATE]`
+    concept: `[PROJECT TYPE: Vanilla HTML/CSS/JS]
+No frameworks. No bundlers. No npm. Pure browser-native.`,
+    builder: `[PROJECT TYPE MANDATE]
+Build: Pure HTML5 + CSS3 + Vanilla JS. Zero frameworks.
+FILES: index.html, style.css, script.js, README.md
+<link rel="stylesheet" href="style.css"> · <script src="script.js" defer></script>
+If backend needed: Express in server/server.js.`
   },
 
   vue: {
-    concept: `[PROJECT TYPE MANDATE — READ FIRST]
-The user has selected: Vue App (Vite + Vue 3).
-TECH STACK LOCKED: Vue 3 + Vite, Vue Router 4, Pinia, lucide-vue-next.
-[END MANDATE]`,
-    frontend: `[PROJECT TYPE MANDATE — READ FIRST]
-The user has selected: Vue App (Vite + Vue 3).
-YOU MUST BUILD WITH: Vue 3 + Vite, Vue Router 4, Pinia, lucide-vue-next.
-Use <script setup> on EVERY component. Composition API only.
-[END MANDATE]`,
-    backend: `[PROJECT TYPE MANDATE — READ FIRST]
-The user has selected: Vue App (Vite + Vue 3).
-DEFAULT: Frontend-only. No backend unless explicitly required.
-[END MANDATE]`
+    concept: `[PROJECT TYPE: Vue App (Vite + Vue 3)]
+Tech stack: Vue 3, Vite, Vue Router 4, Pinia, lucide-vue-next.`,
+    builder: `[PROJECT TYPE MANDATE]
+Build: Vue 3 + Vite + Vue Router 4 + Pinia + lucide-vue-next.
+<script setup> on EVERY component. Composition API only.
+If backend needed: Express + better-sqlite3 in server/ directory.`
   },
 
   nextjs: {
-    concept: `[PROJECT TYPE MANDATE — READ FIRST]
-The user has selected: Next.js App (App Router).
-TECH STACK LOCKED: Next.js 14 with App Router, TypeScript, lucide-react.
-[END MANDATE]`,
-    frontend: `[PROJECT TYPE MANDATE — READ FIRST]
-The user has selected: Next.js App (App Router).
-YOU MUST BUILD WITH: Next.js 14, App Router, TypeScript, lucide-react.
-"use client" on FIRST LINE of any file using hooks/browser APIs.
-Never use react-router-dom. Use next/link and next/image.
-[END MANDATE]`,
-    backend: `[PROJECT TYPE MANDATE — READ FIRST]
-The user has selected: Next.js App (App Router).
-Use Next.js API Routes in app/api/. No separate Express server.
-[END MANDATE]`
+    concept: `[PROJECT TYPE: Next.js App (App Router)]
+Tech stack: Next.js 14, App Router, TypeScript, lucide-react.`,
+    builder: `[PROJECT TYPE MANDATE]
+Build: Next.js 14 + App Router + TypeScript + lucide-react.
+"use client" on FIRST LINE of any file using hooks or browser APIs.
+Use next/link and next/image. API routes: app/api/[resource]/route.ts.`
   },
 
   backend: {
-    concept: `[PROJECT TYPE MANDATE — READ FIRST]
-The user has selected: Backend API (Node.js / Express).
-TECH STACK LOCKED: Node.js + Express + better-sqlite3. API only — no frontend.
-[END MANDATE]`,
-    frontend: `[PROJECT TYPE MANDATE — READ FIRST]
-The user has selected: Backend API only. No frontend UI to build.
-[END MANDATE]`,
-    backend: `[PROJECT TYPE MANDATE — READ FIRST]
-The user has selected: Backend API (Node.js / Express).
-Build a complete Express REST API with better-sqlite3.
-Every route handler fully implemented. No stubs.
-[END MANDATE]`
+    concept: `[PROJECT TYPE: Backend API (Node.js/Express)]
+API only — no frontend UI. Node.js + Express + better-sqlite3.`,
+    builder: `[PROJECT TYPE MANDATE]
+Build complete Express REST API with better-sqlite3.
+STRUCTURE: server.js (app+routes), db.js (SQLite init), routes/ (one per resource)
+Include: .env.example, README.md. Every route: implemented, validated, error-handled.`
   },
 
   fullstack: {
-    concept: `[PROJECT TYPE MANDATE — READ FIRST]
-The user has selected: Full Stack (React + Express).
-Frontend in /client/, backend in /server/. They talk via REST API.
-CORS: frontend port 5173 → backend port 3001.
-[END MANDATE]`,
-    frontend: `[PROJECT TYPE MANDATE — READ FIRST]
-The user has selected: Full Stack (Frontend + Backend).
-Build React (Vite) frontend in /client/ directory. All paths prefixed with "client/".
-API base: const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
-[END MANDATE]`,
-    backend: `[PROJECT TYPE MANDATE — READ FIRST]
-The user has selected: Full Stack (Frontend + Backend).
-Build Express + better-sqlite3 backend in /server/ directory. All paths prefixed with "server/".
-CORS: allow http://localhost:5173
-[END MANDATE]`
+    concept: `[PROJECT TYPE: Full Stack (React + Express)]
+Frontend in client/, backend in server/. REST API communication.`,
+    builder: `[PROJECT TYPE MANDATE]
+FRONTEND: React (Vite) in client/. All paths prefixed "client/".
+  API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+BACKEND: Express + better-sqlite3 in server/. All paths prefixed "server/".
+  CORS: allow http://localhost:5173 — Port: 3001`
+  },
+
+  python: {
+    concept: `[PROJECT TYPE: Python Script / App]
+Tech stack: Python 3, pip, requirements.txt.`,
+    builder: `[PROJECT TYPE MANDATE]
+Build: Python 3 application or script.
+FILES: main.py (or appropriate entry), requirements.txt, README.md.
+If it's an API, use FastAPI or Flask. If it's a script, just use standard library or common packages.`
   }
 };
 
 // ── Context Builder ────────────────────────────────────────
+// Token budget: target ≤ 40k chars total to stay well under 64k token limit.
+const CTX_MAX_MSG_CHARS = 2500;  // max chars per injected message
+const CTX_MAX_ROLE_MSGS = 8;     // max recent messages from current role
+const CTX_MAX_CONCEPT_MSGS = 4;  // max concept messages to inject into builder
+
+function truncate(str, max) {
+  if (!str || str.length <= max) return str;
+  return str.substring(0, max) + '\n…[truncated to fit token limit]';
+}
+
 export function buildContextMessages(project, targetRole) {
   const messages = [];
   const projectType = project.projectType || 'react';
   const typeContext = PROJECT_TYPE_CONTEXTS[projectType];
 
+  // Project type mandate
   if (typeContext?.[targetRole]) {
     messages.push({ role: 'user', content: typeContext[targetRole] });
   }
 
-  // Inject Persona & Aesthetics Reminder
+  // Role persona reminder (kept short)
   const personaReminders = {
-    concept: `[PERSONA REMINDER — NON-NEGOTIABLE]
-Write as a HUMAN FOUNDER. Use a narrative tone. No bullet-point robots. No corporate filler.
-If this is a Solana token project, focus on the LORE, the VIBE, and the HOOK.
-Your words should make the user want to launch the site immediately.`,
-    frontend: `[VISUAL EXCELLENCE MANDATE — NON-NEGOTIABLE]
-Your code MUST produce a "WOW" UI. Use glassmorphism, smooth animations, and vibrant typography.
-If this is a Solana token site, make it look viral, premium, and alive. 
-No flat designs. No generic cards. Aim for Apple-meets-Cyberpunk excellence.`,
-    backend: `[ARCHITECT PERSONA REMINDER]
-Write as a senior backend architect. No stubs. Secure code only. 
-Align perfectly with what the frontend needs.`
+    concept: `[REMINDER] Professional product strategist. Concise, direct, no filler. Real copy only — zero placeholders.`,
+    builder: `[REMINDER] World-class full stack developer. Premium UI: glassmorphism, animations, vibrant colors. No stubs. Full files only.`
   };
-
   if (personaReminders[targetRole]) {
     messages.push({ role: 'user', content: personaReminders[targetRole] });
   }
 
-  if (targetRole === 'frontend' || targetRole === 'backend') {
-    const conceptMsgs = project.roles.concept.messages;
+  // Inject concept context into builder
+  if (targetRole === 'builder') {
+    const conceptMsgs = project.roles?.concept?.messages || [];
     if (conceptMsgs.length > 0) {
-      // Take the last 12 messages; prioritize assistant (spec) output over user prompts
-      const relevantMsgs = conceptMsgs.slice(-12);
-      const summary = relevantMsgs.map(m =>
-        `${m.role === 'user' ? '## User Request' : '## Concept Agent Spec'}:\n${m.content}`
-      ).join('\n\n---\n\n');
-      messages.push({
-        role: 'user',
-        content: `[CONCEPT MEMORY — Full product specification from Concept Agent. Read carefully before implementing.]\n\n${summary}\n\n[END CONCEPT MEMORY]`
-      });
-      messages.push({
-        role: 'assistant',
-        content: 'I have read and internalized the full product specification from the Concept Agent. I will implement exactly what is described — no extra features, no missing features, no deviations.'
-      });
-    }
-  }
-
-  if (targetRole === 'backend') {
-    const frontendMsgs = project.roles.frontend.messages;
-    if (frontendMsgs.length > 0) {
-      // Include only assistant messages (generated code) — user prompts are not relevant to backend
-      // Use 1500 chars to capture enough API call patterns and data shapes
-      const assistantMsgs = frontendMsgs.filter(m => m.role === 'assistant').slice(-6);
-      const userMsgs = frontendMsgs.filter(m => m.role === 'user').slice(-4);
-      const allRelevant = [...userMsgs, ...assistantMsgs].slice(-8);
-      const summary = allRelevant.map(m => {
-        const label = m.role === 'user' ? 'User Instruction' : 'Frontend Agent Code';
-        const content = m.content.length > 1500 ? m.content.substring(0, 1500) + '\n...[truncated, see full frontend context]' : m.content;
-        return `## ${label}:\n${content}`;
+      const relevantMsgs = conceptMsgs.slice(-CTX_MAX_CONCEPT_MSGS);
+      const summary = relevantMsgs.map(m => {
+        const label = m.role === 'user' ? '## User Request' : '## Concept Spec';
+        return `${label}:\n${truncate(m.content, CTX_MAX_MSG_CHARS)}`;
       }).join('\n\n---\n\n');
       messages.push({
         role: 'user',
-        content: `[FRONTEND MEMORY — Generated frontend code showing exact API endpoints, request shapes, and response field names your backend must match.]\n\n${summary}\n\n[END FRONTEND MEMORY]\n\nCRITICAL: Match every fetch() URL, HTTP method, request body field name, and response field name exactly as shown above.`
+        content: `[CONCEPT MEMORY — Product specification. Implement exactly this.]\n\n${summary}\n\n[END CONCEPT MEMORY]`
       });
       messages.push({
         role: 'assistant',
-        content: 'I have analyzed the frontend implementation. I will ensure every API endpoint, HTTP method, URL path, request body shape, and response field name matches exactly what the frontend code expects. No mismatches.'
+        content: 'Understood. I will implement exactly what the spec describes — no extra features, no deviations.'
       });
     }
   }
 
-  const roleMsgs = project.roles[targetRole].messages;
-  roleMsgs.slice(-20).forEach(m => {
-    messages.push({ role: m.role, content: m.content });
+  // Add recent role messages (capped)
+  const roleMsgs = project.roles?.[targetRole]?.messages || [];
+  roleMsgs.slice(-CTX_MAX_ROLE_MSGS).forEach(m => {
+    messages.push({ role: m.role, content: truncate(m.content, CTX_MAX_MSG_CHARS) });
   });
 
   return messages;
 }
 
-// ── AI Setup ─────────────────────────────────────────────
+// ── AI Call ────────────────────────────────────────────────
 export async function callAI(apiKey, modelId, systemPrompt, contextMessages, userMessage, onChunk, signal) {
-  const messages = [
-    ...contextMessages,
-    { role: 'user', content: userMessage }
-  ];
-
   const payload = {
     model: modelId,
     messages: [
       { role: 'system', content: systemPrompt },
-      ...messages
+      ...contextMessages,
+      { role: 'user', content: userMessage }
     ],
     temperature: 0.7,
     max_tokens: 8192,
@@ -588,11 +486,9 @@ export async function callAI(apiKey, modelId, systemPrompt, contextMessages, use
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
-
     buffer += decoder.decode(value, { stream: true });
     const lines = buffer.split('\n');
     buffer = lines.pop();
-
     for (const line of lines) {
       const trimmed = line.trim();
       if (!trimmed || !trimmed.startsWith('data: ')) continue;
@@ -601,35 +497,19 @@ export async function callAI(apiKey, modelId, systemPrompt, contextMessages, use
       try {
         const parsed = JSON.parse(data);
         const delta = parsed.choices?.[0]?.delta?.content || '';
-        if (delta) {
-          fullText += delta;
-          onChunk(fullText);
-        }
+        if (delta) { fullText += delta; onChunk(fullText); }
       } catch { /* skip malformed */ }
     }
   }
-
   return fullText;
 }
 
 // ── File Parsing ───────────────────────────────────────────
-/**
- * parseFilesFromContent — extract all files from AI-generated markdown.
- *
- * KEY FIX for "lanjutkan" creating duplicate files:
- * Instead of SKIPPING duplicate paths (which caused the lanjutkan issue),
- * we now MERGE them — taking the LONGER content between any two versions
- * of the same file path. This means:
- * - If AI sends a complete file → it wins over a partial.
- * - If AI continues a file mid-way → the combined/longer version wins.
- * - No duplicate entries in the file list.
- */
-// filename: src/utils/store.js  (replace parseFilesFromContent only)
 export function parseFilesFromContent(content, role) {
   const regex = /```(.*?)\n([\s\S]*?)(?:```|$)/g;
   const fileMap = new Map();
-
   let match;
+
   while ((match = regex.exec(content)) !== null) {
     const lang = (match[1] || 'text').toLowerCase();
     const rawCode = match[2];
@@ -640,23 +520,21 @@ export function parseFilesFromContent(content, role) {
     let codeStartIndex = 0;
 
     for (let i = 0; i < Math.min(lines.length, 5); i++) {
-        const line = lines[i].trim();
-        const m = line.match(/^(?:\/\/|#|\/\*|<!--|--)\s*file(?:name)?:\s*(.+?)(?:\s*\(continuation\))?\s*(?:\*\/|-->)?\s*$/i);
-        if (m) {
-            filenameMatch = m;
-            isContinuation = line.toLowerCase().includes('(continuation)');
-            filename = m[1].trim().replace(/\\/g, '/').replace(/^\.\//, '').replace(/^\/+/, '');
-            codeStartIndex = i + 1;
-            break;
-        }
+      const line = lines[i].trim();
+      const m = line.match(/^(?:\/\/|#|\/\*|<!--|--)\s*file(?:name)?:\s*(.+?)(?:\s*\(continuation\))?\s*(?:\*\/|-->)?\s*$/i);
+      if (m) {
+        filenameMatch = m;
+        isContinuation = line.toLowerCase().includes('(continuation)');
+        filename = m[1].trim().replace(/\\/g, '/').replace(/^\.\//, '').replace(/^\/+/, '');
+        codeStartIndex = i + 1;
+        break;
+      }
     }
 
     if (!filenameMatch) continue;
-
     const code = lines.slice(codeStartIndex).join('\n').trimStart();
     if (!code.trim()) continue;
 
-    // MERGE logic within parseFilesFromContent
     if (fileMap.has(filename)) {
       const existing = fileMap.get(filename);
       if (isContinuation) {
@@ -702,31 +580,20 @@ export function getExtension(lang) {
 
 export function buildFileTree(files) {
   const root = { name: '/', type: 'dir', children: {}, path: '' };
-
   files.forEach(file => {
     const parts = file.path.split('/');
     let node = root;
-
     parts.forEach((part, i) => {
       if (i === parts.length - 1) {
-        node.children[part] = {
-          name: part, type: 'file',
-          path: file.path, lang: file.lang,
-          content: file.content, role: file.role
-        };
+        node.children[part] = { name: part, type: 'file', path: file.path, lang: file.lang, content: file.content, role: file.role };
       } else {
         if (!node.children[part]) {
-          node.children[part] = {
-            name: part, type: 'dir',
-            path: parts.slice(0, i + 1).join('/'),
-            children: {}
-          };
+          node.children[part] = { name: part, type: 'dir', path: parts.slice(0, i + 1).join('/'), children: {} };
         }
         node = node.children[part];
       }
     });
   });
-
   return root;
 }
 

@@ -530,7 +530,7 @@ export default function PreviewPanel({ project, activeRole, onUpdateFiles }) {
               <EmptyState
                 icon="📁"
                 title="No files yet"
-                desc={'Ask the Frontend or Backend agent to generate code.\nFiles appear here in realtime as the AI writes them.'}
+                desc={'Ask the Builder agent to generate code.\nFiles appear here in realtime as the AI writes them.'}
               />
             ) : (
               <div className="file-tree">

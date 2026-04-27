@@ -9,8 +9,6 @@ import {
 const MAX_RETRIES = 3;
 
 // ── Realtime file parser during streaming ──────────────────
-// Parses COMPLETE code blocks only (closes with ```) from partial stream text.
-// Returns only newly-completed blocks not yet seen.
 function parseCompletedBlocksFromStream(text, alreadyParsedPaths) {
   const regex = /```(.*?)\n([\s\S]*?)```/g;
   const newFiles = [];
@@ -39,7 +37,6 @@ function parseCompletedBlocksFromStream(text, alreadyParsedPaths) {
     }
 
     if (!filenameMatch) continue;
-
     if (seenInThisCall.has(filename)) continue;
     seenInThisCall.add(filename);
 
@@ -50,6 +47,64 @@ function parseCompletedBlocksFromStream(text, alreadyParsedPaths) {
   }
 
   return newFiles;
+}
+
+// ── Theme Confirm Panel ────────────────────────────────────
+function ThemeConfirmPanel({ onConfirmTheme }) {
+  const [customTheme, setCustomTheme] = useState('');
+  const themes = [
+    'Dark Cyberpunk', 'Clean Minimal', 'Glassmorphism', 
+    'Neon Retro', 'Brutalist Bold', 'Corporate Clean', 'Colorful Vibrant'
+  ];
+
+  return (
+    <div className="theme-confirm-panel">
+      <div className="theme-confirm-header">
+        <h3>🎨 Ready to Build?</h3>
+        <p>Concept complete. Choose a design theme before the Builder starts generating code:</p>
+      </div>
+      <div className="theme-buttons">
+        {themes.map(t => (
+          <button key={t} className="btn btn-outline btn-sm" onClick={() => onConfirmTheme(t)}>
+            {t}
+          </button>
+        ))}
+      </div>
+      <div className="theme-custom-input">
+        <input 
+          type="text" 
+          className="input" 
+          placeholder="Or type a custom theme..." 
+          value={customTheme}
+          onChange={e => setCustomTheme(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && customTheme && onConfirmTheme(customTheme)}
+        />
+        <button 
+          className="btn btn-primary" 
+          disabled={!customTheme.trim()} 
+          onClick={() => onConfirmTheme(customTheme)}
+        >
+          Build
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Incomplete Banner ──────────────────────────────────────
+function IncompleteBanner({ onContinue }) {
+  return (
+    <div className="incomplete-banner">
+      <span className="incomplete-icon">⚠️</span>
+      <div className="incomplete-text">
+        <strong>Files Incomplete</strong>
+        <p>The builder stopped before finishing all files.</p>
+      </div>
+      <button className="btn btn-primary btn-sm" onClick={onContinue}>
+        ▶ Continue Generation
+      </button>
+    </div>
+  );
 }
 
 // ── Main ChatPanel ─────────────────────────────────────────
@@ -63,12 +118,10 @@ export default function ChatPanel({
   const [error, setError] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
   const [pendingUserMsg, setPendingUserMsg] = useState(null);
-  // Track which file paths were already pushed to the panel during THIS stream
   const streamParsedPaths = useRef(new Set());
   const scrollRef = useRef(null);
   const abortRef = useRef(null);
 
-  // Load messages when role/project changes
   useEffect(() => {
     const fresh = getProject(project.id);
     setMessages(fresh?.roles[activeRole]?.messages || []);
@@ -78,7 +131,6 @@ export default function ChatPanel({
     streamParsedPaths.current = new Set();
   }, [project.id, activeRole]);
 
-  // Auto-scroll
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -103,8 +155,6 @@ export default function ChatPanel({
 
     const fresh = getProject(project.id);
     const contextMessages = buildContextMessages(fresh, activeRole);
-
-    // Remove the last user message from context (we're sending it separately)
     const trimmedContext = contextMessages.slice(0, -1);
 
     abortRef.current = new AbortController();
@@ -115,42 +165,27 @@ export default function ChatPanel({
         prompt = `[Retry ${retryNum}/${MAX_RETRIES}] Please regenerate your previous response.\n\nOriginal request: ${userText}`;
       }
 
-      // Detect "lanjutkan" / "continue" — inject a resume instruction
-      const isResume = /(?:lanjutkan|continue|lanjut|next|teruskan|lanjutin|lanjut dong|continue please|go on|more)/i.test(userText.trim()) && userText.trim().length < 30;
+      const isResume = /(?:lanjutkan|continue|lanjut|next|teruskan)/i.test(userText.trim()) && userText.trim().length < 30;
       if (isResume) {
-        const lastAssistantMsg = [...(fresh.roles[activeRole].messages)]
-          .reverse()
-          .find(m => m.role === 'assistant');
+        const lastAssistantMsg = [...(fresh.roles[activeRole].messages)].reverse().find(m => m.role === 'assistant');
         if (lastAssistantMsg) {
           const fullContent = lastAssistantMsg.content.trim();
           const allLines = fullContent.split('\n');
-          // Get last 20 lines for solid anchoring
           const lastLines = allLines.slice(-20).join('\n');
           const totalLineCount = allLines.length;
           
-          // Detect the last filename being written
           const filenameMatches = [...fullContent.matchAll(/\/\/\s*filename:\s*(.+?)(?:\s*\(continuation\))?\s*$/gmi)];
           const lastFilename = filenameMatches.length > 0 ? filenameMatches[filenameMatches.length - 1][1].trim() : null;
 
           prompt = `[CRITICAL — CONTINUE / LANJUTKAN INSTRUCTION]
+You got cut off. DO NOT restart any file. Pick up from EXACT character where you left off.
+Start NEW block with exactly: // filename: ${lastFilename || 'path/to/file'} (continuation)
 
-You were writing a response and got cut off. Here is what you MUST do:
-
-1. DO NOT restart any file from line 1. DO NOT re-output code already written.
-2. DO NOT re-introduce the project, repeat headings, or summarize.
-3. Pick up from the EXACT character where your previous response ended.
-4. IMPORTANT: Always start a NEW code block (using triple backticks) even if your last one was left open. 
-5. The FIRST line of your new code block must be: // filename: ${lastFilename || 'path/to/file'} (continuation)
-6. Use this (continuation) marker exactly.
-
-${lastFilename ? `YOUR LAST FILE WAS: ${lastFilename} (you were at approximately line ~${totalLineCount})` : `You delivered approximately ${totalLineCount} lines total.`}
-
-Your previous response ended with these exact lines:
+Your previous response ended with:
 ------
 ${lastLines}
 ------
-
-Now continue IMMEDIATELY from that exact point. No preamble. No summary. Just the next line of code.`;
+Continue IMMEDIATELY from that exact point. Just the next line of code.`;
         }
       }
 
@@ -159,17 +194,9 @@ Now continue IMMEDIATELY from that exact point. No preamble. No summary. Just th
         apiKey, roleConfig.model, roleConfig.systemPrompt, trimmedContext, prompt,
         (partial) => {
           setStreamingText(partial);
-
-          // ── Realtime file parsing during stream ──
-          const newFiles = parseCompletedBlocksFromStream(
-            partial,
-            streamParsedPaths.current
-          );
+          const newFiles = parseCompletedBlocksFromStream(partial, streamParsedPaths.current);
           if (newFiles.length > 0) {
-            // Mark these paths as already pushed
             newFiles.forEach(f => streamParsedPaths.current.add(f.path));
-
-            // Tag with role and update immediately
             const tagged = newFiles.map(f => ({ ...f, role: activeRole }));
             updateProjectFiles(project.id, tagged);
             if (onFilesGenerated) onFilesGenerated(tagged);
@@ -178,23 +205,15 @@ Now continue IMMEDIATELY from that exact point. No preamble. No summary. Just th
         abortRef.current.signal
       );
 
-      // filename: src/components/ChatPanel.jsx  (inside sendMessage, after stream ends)
-
-      // Final parse after stream ends — only handle files with filename comments
       const allFiles = parseFilesFromContent(fullText, activeRole);
-
-      // Split into: files not yet pushed vs already pushed (need content update)
       const unpushed = allFiles.filter(f => !streamParsedPaths.current.has(f.path));
       const alreadyPushed = allFiles.filter(f => streamParsedPaths.current.has(f.path));
 
-      // Push new files
       if (unpushed.length > 0) {
         updateProjectFiles(project.id, unpushed);
         if (onFilesGenerated) onFilesGenerated(unpushed);
       }
 
-      // Update existing files (content may be longer now that stream is complete)
-      // Only update if the final content is actually longer than what was streamed
       if (alreadyPushed.length > 0) {
         const fresh2 = getProject(project.id);
         const currentFiles = fresh2?.generatedFiles || [];
@@ -219,7 +238,6 @@ Now continue IMMEDIATELY from that exact point. No preamble. No summary. Just th
       onMessageSent();
     } catch (err) {
       if (err.name === 'AbortError') {
-        // On abort, still parse whatever was streamed
         if (streamingText) {
           const partial = parseFilesFromContent(streamingText, activeRole);
           if (partial.length > 0) {
@@ -233,7 +251,6 @@ Now continue IMMEDIATELY from that exact point. No preamble. No summary. Just th
       }
       setError(err.message || 'Unknown error');
       setStreamingText('');
-
       if (retryNum < MAX_RETRIES) {
         const delay = Math.pow(2, retryNum) * 1000;
         setRetryCount(retryNum + 1);
@@ -262,18 +279,39 @@ Now continue IMMEDIATELY from that exact point. No preamble. No summary. Just th
     }
   };
 
+  const handleThemeConfirm = (theme) => {
+    onRoleChange('builder');
+    // Ensure state updates before sending message
+    setTimeout(() => {
+      // Create builder instruction based on theme
+      const instruction = `Concept is approved. Build the application using the theme: ${theme}. Generate all necessary frontend and backend files.`;
+      // Trigger send message manually (we need to bypass useCallback deps for immediate call, but we can just use the function)
+      sendMessage(instruction);
+    }, 100);
+  };
+
   const role = ROLES[activeRole];
-  const hasConceptContext = (activeRole === 'frontend' || activeRole === 'backend') &&
-    project.roles.concept.messages.length > 0;
-  const hasFrontendContext = activeRole === 'backend' &&
-    project.roles.frontend.messages.length > 0;
+  const hasConceptContext = activeRole === 'builder' && project.roles.concept.messages.length > 0;
+  
+  // Show Theme Confirm Panel if Concept has messages, last message is from assistant, and Builder has no messages
+  const shouldShowThemeConfirm = activeRole === 'concept' && 
+                                 messages.length > 0 && 
+                                 messages[messages.length - 1].role === 'assistant' &&
+                                 project.roles.builder.messages.length === 0 &&
+                                 !isLoading;
+
+  // Check for incomplete blocks (unclosed backticks)
+  const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
+  const isIncomplete = lastMessage && 
+                       lastMessage.role === 'assistant' && 
+                       (lastMessage.content.match(/```/g) || []).length % 2 !== 0 &&
+                       !isLoading;
 
   return (
     <div className="chat-panel">
-      {/* ── Role Tabs ── */}
       <div className="role-tabs">
         {Object.values(ROLES).map(r => {
-          const count = project.roles[r.id].messages.filter(m => m.role === 'user').length;
+          const count = project.roles[r.id]?.messages?.filter(m => m.role === 'user').length || 0;
           const isActive = activeRole === r.id;
           return (
             <button
@@ -301,15 +339,12 @@ Now continue IMMEDIATELY from that exact point. No preamble. No summary. Just th
         )}
       </div>
 
-      {/* ── Messages ── */}
       <div className="chat-messages" ref={scrollRef}>
-        {(hasConceptContext || hasFrontendContext) && (
+        {hasConceptContext && (
           <div className="chat-context-notice">
             <span className="chat-context-pulse" />
             <span>
-              Context injected from:
-              {hasConceptContext && <span className="ctx-tag ctx-concept">◈ Concept</span>}
-              {hasFrontendContext && <span className="ctx-tag ctx-frontend">◇ Frontend</span>}
+              Context injected from: <span className="ctx-tag ctx-concept">◈ Concept</span>
             </span>
           </div>
         )}
@@ -319,32 +354,20 @@ Now continue IMMEDIATELY from that exact point. No preamble. No summary. Just th
         )}
 
         {messages.map((msg, i) => (
-          <ChatMessage
-            key={msg.id || i}
-            message={msg}
-            role={activeRole}
-            animDelay={i * 30}
-          />
+          <ChatMessage key={msg.id || i} message={msg} role={activeRole} animDelay={i * 30} />
         ))}
 
-        {streamingText && (
-          <StreamingMessage text={streamingText} role={activeRole} />
-        )}
+        {streamingText && <StreamingMessage text={streamingText} role={activeRole} />}
+        {isLoading && !streamingText && <ThinkingBubble role={role} retryCount={retryCount} />}
 
-        {isLoading && !streamingText && (
-          <ThinkingBubble role={role} retryCount={retryCount} />
-        )}
+        {shouldShowThemeConfirm && <ThemeConfirmPanel onConfirmTheme={handleThemeConfirm} />}
+        {isIncomplete && <IncompleteBanner onContinue={() => sendMessage('continue')} />}
 
         {error && retryCount >= MAX_RETRIES && (
           <div className="error-notice animate-shake">
             <span className="error-notice-icon">⚠</span>
             <div>
               <strong>Failed after {MAX_RETRIES} retries:</strong> {error}
-              {(error.toLowerCase().includes('fetch') || error.toLowerCase().includes('proxy')) && (
-                <div className="error-tip">
-                  💡 Make sure the proxy server is running: <code>npm run dev</code>
-                </div>
-              )}
               <button className="btn btn-ghost btn-sm retry-btn" onClick={() => pendingUserMsg && sendMessage(pendingUserMsg)}>
                 ↺ Retry Manually
               </button>
@@ -353,14 +376,12 @@ Now continue IMMEDIATELY from that exact point. No preamble. No summary. Just th
         )}
       </div>
 
-      {/* ── Input ── */}
       <PromptInput
         role={role}
         isLoading={isLoading}
         onSend={sendMessage}
         onStop={handleStop}
         hasConceptContext={hasConceptContext}
-        hasFrontendContext={hasFrontendContext}
         project={project}
         onFilesGenerated={onFilesGenerated}
       />
@@ -368,29 +389,22 @@ Now continue IMMEDIATELY from that exact point. No preamble. No summary. Just th
   );
 }
 
-// ── Welcome Screen ─────────────────────────────────────────
 function WelcomeScreen({ role, activeRole }) {
   const descriptions = {
-    concept: 'Describe your project vision. I\'ll develop business logic, features, user journeys, and complete copywriting — researching your domain to write a precise, publication-ready product spec.',
-    frontend: 'Tell me what to build. I\'ll create a stunning, fully interactive UI with complete file structure, dark mode, animations, responsive design, and every component you need.',
-    backend: 'Describe your backend needs. I\'ll generate a complete, production-ready API: Express routes, SQLite schema, validation, error handling — aligned exactly with your frontend.'
+    concept: 'I am the Discovery Agent. Tell me your idea, and I will ask a few clarifying questions before generating a complete product specification.',
+    builder: 'I am the Full Stack Builder. I will generate all frontend, backend, and styling files in one go based on the confirmed Concept spec.'
   };
 
   const hints = {
     concept: [
-      'Describe your target audience and the core problem this solves',
-      'Mention any competitor apps or references you like',
-      'Specify must-have features — be explicit, no vague requirements'
+      'Describe your general idea first',
+      'I will ask 2-3 questions about audience, features, and vibe',
+      'Once answered, I will produce a full actionable spec'
     ],
-    frontend: [
-      'Start with: "Based on the concept spec above, build the full UI"',
-      'Specify vibe: dark/light, Solana-style, minimalist, glassmorphism...',
-      'Mention key interactions: animations, hover states, mobile behavior'
-    ],
-    backend: [
-      'Start with: "Based on concept + frontend above, build the API"',
-      'List any environment variables needed (API keys, DB path, port)',
-      'Specify if you need auth — otherwise backend skips it by default'
+    builder: [
+      'Make sure Concept spec is confirmed first',
+      'I will generate complete production-ready code',
+      'If I stop midway, click the Continue button'
     ]
   };
 
@@ -402,7 +416,6 @@ function WelcomeScreen({ role, activeRole }) {
       </div>
       <div className="chat-welcome-title">{role.label} Agent</div>
       <div className="chat-welcome-desc">{descriptions[activeRole]}</div>
-
       <div className="welcome-hints">
         {(hints[activeRole] || []).map((h, i) => (
           <div key={i} className="welcome-hint" style={{ animationDelay: `${i * 80}ms` }}>
@@ -411,7 +424,6 @@ function WelcomeScreen({ role, activeRole }) {
           </div>
         ))}
       </div>
-
       <div className="welcome-model-badge">
         <span className="model-dot" style={{ background: role.color }} />
         <span>{role.model}</span>
@@ -420,7 +432,6 @@ function WelcomeScreen({ role, activeRole }) {
   );
 }
 
-// ── Chat Message ───────────────────────────────────────────
 const ChatMessage = React.memo(({ message, role, animDelay = 0 }) => {
   const isUser = message.role === 'user';
   const roleConfig = ROLES[role];
@@ -437,36 +448,23 @@ const ChatMessage = React.memo(({ message, role, animDelay = 0 }) => {
     );
   }
 
-  const hasCode = message.content.includes('```');
-  const displayContent = isExpanded
-    ? message.content
-    : summarizeAgentMessage(message.content);
+  const hasCode = message.content.includes('\`\`\`');
+  const displayContent = isExpanded ? message.content : summarizeAgentMessage(message.content);
 
   return (
     <div className="chat-msg-agent" style={{ animationDelay: `${animDelay}ms` }}>
       <div className="chat-msg-agent-header">
-        <span
-          className="chat-msg-agent-badge"
-          style={{ background: roleConfig.bg, color: roleConfig.color, borderColor: roleConfig.color + '30' }}
-        >
+        <span className="chat-msg-agent-badge" style={{ background: roleConfig.bg, color: roleConfig.color, borderColor: roleConfig.color + '30' }}>
           {roleConfig.icon} {roleConfig.label}
         </span>
-        {message.timestamp && (
-          <span className="chat-msg-time">{formatTime(message.timestamp)}</span>
-        )}
+        {message.timestamp && <span className="chat-msg-time">{formatTime(message.timestamp)}</span>}
       </div>
       <div className="chat-msg-agent-bubble">
         <div className="prose chat-prose">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>
-            {displayContent}
-          </ReactMarkdown>
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{displayContent}</ReactMarkdown>
         </div>
         {hasCode && (
-          <button
-            className="chat-msg-expand-btn"
-            onClick={() => setIsExpanded(!isExpanded)}
-            style={{ color: roleConfig.color }}
-          >
+          <button className="chat-msg-expand-btn" onClick={() => setIsExpanded(!isExpanded)} style={{ color: roleConfig.color }}>
             {isExpanded ? '▵ Collapse Code' : '▿ Show Full Code'}
           </button>
         )}
@@ -475,22 +473,16 @@ const ChatMessage = React.memo(({ message, role, animDelay = 0 }) => {
   );
 });
 
-// ── Streaming Message ──────────────────────────────────────
 function StreamingMessage({ text, role }) {
   const roleConfig = ROLES[role];
   const summary = summarizeAgentMessage(text, true);
-
-  // Count files being written
-  const fileMatches = [...text.matchAll(/```\w+\n(?:\/\/|#|<!--)\s*filename:\s*(.+?)(?:\s*-->)?\n/g)];
+  const fileMatches = [...text.matchAll(/\`\`\`\w+\n(?:\/\/|#|<!--)\s*filename:\s*(.+?)(?:\s*-->)?\n/g)];
   const fileCount = fileMatches.length;
 
   return (
     <div className="chat-msg-agent streaming-msg">
       <div className="chat-msg-agent-header">
-        <span
-          className="chat-msg-agent-badge"
-          style={{ background: roleConfig.bg, color: roleConfig.color }}
-        >
+        <span className="chat-msg-agent-badge" style={{ background: roleConfig.bg, color: roleConfig.color }}>
           {roleConfig.icon} {roleConfig.label}
           <span className="streaming-dot-group">
             <span className="streaming-dot" style={{ background: roleConfig.color }} />
@@ -506,22 +498,16 @@ function StreamingMessage({ text, role }) {
       </div>
       <div className="chat-msg-agent-bubble">
         <div className="prose chat-prose">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>
-            {summary}
-          </ReactMarkdown>
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{summary}</ReactMarkdown>
         </div>
         <div className="streaming-progress-bar">
-          <div
-            className="streaming-progress-fill"
-            style={{ background: roleConfig.color }}
-          />
+          <div className="streaming-progress-fill" style={{ background: roleConfig.color }} />
         </div>
       </div>
     </div>
   );
 }
 
-// ── Thinking Bubble ────────────────────────────────────────
 function ThinkingBubble({ role, retryCount }) {
   const phrases = ['Thinking...', 'Analyzing...', 'Crafting response...', 'Processing...'];
   const [phraseIdx, setPhraseIdx] = useState(0);
@@ -552,64 +538,22 @@ function ThinkingBubble({ role, retryCount }) {
   );
 }
 
-// ── Prompt Input ───────────────────────────────────────────
-function PromptInput({
-  role, isLoading, onSend, onStop,
-  hasConceptContext, hasFrontendContext,
-  project, onFilesGenerated
-}) {
+function PromptInput({ role, isLoading, onSend, onStop, hasConceptContext, project, onFilesGenerated }) {
   const [text, setText] = useState('');
-  const [attachments, setAttachments] = useState([]);
   const [isFocused, setIsFocused] = useState(false);
   const textareaRef = useRef(null);
-  const fileInputRef = useRef(null);
-
-  const processFile = (file) => {
-    if (!file || !file.type.startsWith('image/')) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setAttachments(prev => [...prev, {
-        id: Math.random().toString(36).substr(2, 9),
-        name: file.name, type: file.type, data: e.target.result
-      }]);
-    };
-    reader.readAsDataURL(file);
-  };
 
   const handleSubmit = () => {
-    if ((!text.trim() && attachments.length === 0) || isLoading) return;
-
-    if (attachments.length > 0) {
-      const filesToSave = attachments.map(att => ({
-        path: `assets/${att.name}`, content: att.data,
-        lang: att.type.split('/')[1] || 'png',
-        role: role.id, updatedAt: new Date().toISOString()
-      }));
-      updateProjectFiles(project.id, filesToSave);
-    }
-
-    const attachmentNote = attachments.length > 0
-      ? `\n\n[Attached Assets: ${attachments.map(a => `assets/${a.name}`).join(', ')}]`
-      : '';
-
-    onSend(text.trim() + attachmentNote);
+    if (!text.trim() || isLoading) return;
+    onSend(text.trim());
     setText('');
-    setAttachments([]);
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
-    onFilesGenerated && onFilesGenerated();
   };
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       handleSubmit();
-    }
-  };
-
-  const handlePaste = (e) => {
-    const items = e.clipboardData.items;
-    for (let i = 0; i < items.length; i++) {
-      if (items[i].type.indexOf('image') !== -1) processFile(items[i].getAsFile());
     }
   };
 
@@ -621,19 +565,13 @@ function PromptInput({
 
   const quickPrompts = {
     concept: [
-      'Build a Solana token landing page with lore, tokenomics, and roadmap',
-      'Plan a Web3 NFT marketplace for digital collectors',
-      'Spec a crypto portfolio tracker with real-time prices'
+      'Build a modern landing page for an AI agent',
+      'Spec a productivity dashboard for remote teams',
+      'Plan a mobile-first e-commerce app'
     ],
-    frontend: [
-      'Based on the concept spec above, build the complete UI with dark mode and heavy animations',
-      'Create a Solana token site with hero, tokenomics chart, and live price from DexScreener',
-      'Build a glassmorphism dashboard with animated stats and interactive charts'
-    ],
-    backend: [
-      'Based on concept + frontend above, build the complete Express + SQLite API',
-      'Build a proxy API for DexScreener with 30s caching to avoid rate limits',
-      'Create a REST API with full CRUD, validation, and error handling'
+    builder: [
+      'Concept approved. Build the application with Dark Cyberpunk theme.',
+      'Concept approved. Build the application with Clean Minimal theme.'
     ]
   };
 
@@ -641,47 +579,17 @@ function PromptInput({
 
   return (
     <div className={`prompt-area ${isFocused ? 'focused' : ''}`}>
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={(e) => processFile(e.target.files[0])}
-        accept="image/*"
-        style={{ display: 'none' }}
-      />
-
-      {(hasConceptContext || hasFrontendContext) && (
+      {hasConceptContext && (
         <div className="prompt-context-bar">
           <span className="ctx-bar-label">Context from:</span>
-          {hasConceptContext && (
-            <span className="prompt-context-tag concept-tag">◈ Concept</span>
-          )}
-          {hasFrontendContext && (
-            <span className="prompt-context-tag frontend-tag">◇ Frontend</span>
-          )}
+          <span className="prompt-context-tag concept-tag">◈ Concept</span>
         </div>
       )}
 
-      {attachments.length > 0 && (
-        <div className="prompt-attachments">
-          {attachments.map(att => (
-            <div key={att.id} className="attachment-chip">
-              <img src={att.data} alt="thumb" className="attachment-thumb" />
-              <span className="attachment-name">{att.name}</span>
-              <button className="attachment-remove" onClick={() => setAttachments(prev => prev.filter(a => a.id !== att.id))}>✕</button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {!text && !isLoading && attachments.length === 0 && (
+      {!text && !isLoading && (
         <div className="quick-prompts">
           {(quickPrompts[role.id] || []).map(p => (
-            <button
-              key={p}
-              className="quick-prompt-btn"
-              style={{ '--role-color': role.color }}
-              onClick={() => { setText(p); textareaRef.current?.focus(); }}
-            >
+            <button key={p} className="quick-prompt-btn" style={{ '--role-color': role.color }} onClick={() => { setText(p); textareaRef.current?.focus(); }}>
               {p}
             </button>
           ))}
@@ -689,15 +597,6 @@ function PromptInput({
       )}
 
       <div className="prompt-row">
-        <button
-          className="btn-upload"
-          onClick={() => fileInputRef.current?.click()}
-          title="Upload image asset"
-          disabled={isLoading}
-        >
-          🖼
-        </button>
-
         <div className="prompt-input-wrap">
           <textarea
             ref={textareaRef}
@@ -706,7 +605,6 @@ function PromptInput({
             value={text}
             onChange={handleInput}
             onKeyDown={handleKeyDown}
-            onPaste={handlePaste}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
             rows={1}
@@ -725,13 +623,7 @@ function PromptInput({
             <span className="stop-icon">⬛</span>
           </button>
         ) : (
-          <button
-            className="send-btn"
-            onClick={handleSubmit}
-            disabled={!text.trim() && attachments.length === 0}
-            title="Send (Ctrl+Enter)"
-            style={{ '--role-color': role.color }}
-          >
+          <button className="send-btn" onClick={handleSubmit} disabled={!text.trim()} title="Send (Ctrl+Enter)" style={{ '--role-color': role.color }}>
             <span className="send-arrow">➤</span>
           </button>
         )}
@@ -740,13 +632,11 @@ function PromptInput({
   );
 }
 
-// ── Helpers ────────────────────────────────────────────────
 function summarizeAgentMessage(content, isStreaming = false) {
   if (!content) return '';
-
   return content.replace(/```(\w+)?\n([\s\S]*?)(?:```|$)/g, (match, lang, code) => {
     const lines = code.trim().split('\n');
-    const firstLine = lines[0];
+    const firstLine = lines[0] || '';
     const filenameMatch = firstLine.match(/^(?:\/\/|#|<!--|\/\*)\s*filename:\s*(.+?)(?:\s*\(continuation\))?\s*(?:\*\/|-->)?$/i);
     const filename = filenameMatch ? filenameMatch[1].trim() : null;
     const lineCount = lines.length;
