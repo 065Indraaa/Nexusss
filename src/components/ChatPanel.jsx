@@ -113,57 +113,58 @@ export default function ChatPanel({
   onMessageSent, onNeedApiKey, onFilesGenerated
 }) {
   const [messages, setMessages] = useState([]);
-  const [streamingText, setStreamingText] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [streamingText, setStreamingText] = useState({ concept: '', builder: '' });
+  const [isLoading, setIsLoading] = useState({ concept: false, builder: false });
   const [error, setError] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
   const [pendingUserMsg, setPendingUserMsg] = useState(null);
-  const streamParsedPaths = useRef(new Set());
+  const streamParsedPaths = useRef({ concept: new Set(), builder: new Set() });
   const scrollRef = useRef(null);
-  const abortRef = useRef(null);
+  const abortRefs = useRef({ concept: null, builder: null });
+
+  useEffect(() => {
+    return () => {
+      if (abortRefs.current.concept) abortRefs.current.concept.abort();
+      if (abortRefs.current.builder) abortRefs.current.builder.abort();
+    };
+  }, [project.id]);
 
   useEffect(() => {
     const fresh = getProject(project.id);
     setMessages(fresh?.roles?.[activeRole]?.messages || []);
-    setStreamingText('');
     setError(null);
     setRetryCount(0);
-    streamParsedPaths.current = new Set();
-    
-    return () => {
-      if (abortRef.current) {
-        abortRef.current.abort();
-      }
-    };
   }, [project.id, activeRole]);
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages, streamingText]);
+  }, [messages, streamingText.concept, streamingText.builder]);
 
-  const sendMessage = useCallback(async (userText, isRetry = false, retryNum = 0) => {
+  const sendMessage = useCallback(async (userText, targetRole = activeRole, isRetry = false, retryNum = 0) => {
     if (!apiKey) { onNeedApiKey(); return; }
     if (!userText.trim()) return;
 
     setError(null);
-    setIsLoading(true);
-    setStreamingText('');
-    streamParsedPaths.current = new Set();
+    setIsLoading(prev => ({ ...prev, [targetRole]: true }));
+    setStreamingText(prev => ({ ...prev, [targetRole]: '' }));
+    streamParsedPaths.current[targetRole][targetRole] = new Set();
 
     if (!isRetry) {
       setPendingUserMsg(userText);
-      addMessage(project.id, activeRole, { role: 'user', content: userText });
+      addMessage(project.id, targetRole, { role: 'user', content: userText });
       const fresh = getProject(project.id);
-      setMessages(fresh?.roles?.[activeRole]?.messages || []);
+      if (activeRole === targetRole) {
+        setMessages(fresh?.roles?.[targetRole]?.messages || []);
+      }
     }
 
     const fresh = getProject(project.id);
-    const contextMessages = buildContextMessages(fresh, activeRole);
+    const contextMessages = buildContextMessages(fresh, targetRole);
     const trimmedContext = contextMessages.slice(0, -1);
 
-    abortRef.current = new AbortController();
+    abortRefs.current[targetRole] = new AbortController();
 
     try {
       let prompt = userText;
@@ -173,7 +174,7 @@ export default function ChatPanel({
 
       const isResume = /(?:lanjutkan|continue|lanjut|next|teruskan)/i.test(userText.trim()) && userText.trim().length < 30;
       if (isResume) {
-        const lastAssistantMsg = [...(fresh?.roles?.[activeRole]?.messages || [])].reverse().find(m => m.role === 'assistant');
+        const lastAssistantMsg = [...(fresh?.roles?.[targetRole]?.messages || [])].reverse().find(m => m.role === 'assistant');
         if (lastAssistantMsg) {
           const fullContent = lastAssistantMsg.content.trim();
           const allLines = fullContent.split('\n');
@@ -195,25 +196,25 @@ Continue IMMEDIATELY from that exact point. Just the next line of code.`;
         }
       }
 
-      const roleConfig = ROLES[activeRole];
+      const roleConfig = ROLES[targetRole];
       const fullText = await callAI(
         apiKey, roleConfig.model, roleConfig.systemPrompt, trimmedContext, prompt,
         (partial) => {
-          setStreamingText(partial);
-          const newFiles = parseCompletedBlocksFromStream(partial, streamParsedPaths.current);
+          setStreamingText(prev => ({ ...prev, [targetRole]: partial }));
+          const newFiles = parseCompletedBlocksFromStream(partial, streamParsedPaths.current[targetRole]);
           if (newFiles.length > 0) {
-            newFiles.forEach(f => streamParsedPaths.current.add(f.path));
-            const tagged = newFiles.map(f => ({ ...f, role: activeRole }));
+            newFiles.forEach(f => streamParsedPaths.current[targetRole].add(f.path));
+            const tagged = newFiles.map(f => ({ ...f, role: targetRole }));
             updateProjectFiles(project.id, tagged);
             if (onFilesGenerated) onFilesGenerated(tagged);
           }
         },
-        abortRef.current.signal
+        abortRefs.current[targetRole].signal
       );
 
-      const allFiles = parseFilesFromContent(fullText, activeRole);
-      const unpushed = allFiles.filter(f => !streamParsedPaths.current.has(f.path));
-      const alreadyPushed = allFiles.filter(f => streamParsedPaths.current.has(f.path));
+      const allFiles = parseFilesFromContent(fullText, targetRole);
+      const unpushed = allFiles.filter(f => !streamParsedPaths.current[targetRole].has(f.path));
+      const alreadyPushed = allFiles.filter(f => streamParsedPaths.current[targetRole].has(f.path));
 
       if (unpushed.length > 0) {
         updateProjectFiles(project.id, unpushed);
@@ -233,53 +234,55 @@ Continue IMMEDIATELY from that exact point. Just the next line of code.`;
         }
       }
 
-      addMessage(project.id, activeRole, { role: 'assistant', content: fullText });
+      addMessage(project.id, targetRole, { role: 'assistant', content: fullText });
 
       const updated = getProject(project.id);
-      setMessages(updated?.roles?.[activeRole]?.messages || []);
-      setStreamingText('');
+      if (activeRole === targetRole) {
+        setMessages(updated?.roles?.[targetRole]?.messages || []);
+      }
+      setStreamingText(prev => ({ ...prev, [targetRole]: '' }));
       setRetryCount(0);
       setPendingUserMsg(null);
-      streamParsedPaths.current = new Set();
+      streamParsedPaths.current[targetRole][targetRole] = new Set();
       onMessageSent();
 
       // Automatically continue if the response was cut off (unclosed code block)
       const backticksCount = (fullText.match(/```/g) || []).length;
       if (backticksCount % 2 !== 0) {
         setTimeout(() => {
-          sendMessage('continue');
+          sendMessage('continue', targetRole);
         }, 1000);
       }
     } catch (err) {
       if (err.name === 'AbortError') {
-        if (streamingText) {
-          const partial = parseFilesFromContent(streamingText, activeRole);
+        if (streamingText[targetRole]) {
+          const partial = parseFilesFromContent(streamingText[targetRole], targetRole);
           if (partial.length > 0) {
             updateProjectFiles(project.id, partial);
             if (onFilesGenerated) onFilesGenerated(partial);
           }
         }
-        setStreamingText('');
-        setIsLoading(false);
+        setStreamingText(prev => ({ ...prev, [targetRole]: '' }));
+        setIsLoading(prev => ({ ...prev, [targetRole]: false }));
         return;
       }
       setError(err.message || 'Unknown error');
-      setStreamingText('');
+      setStreamingText(prev => ({ ...prev, [targetRole]: '' }));
       if (retryNum < MAX_RETRIES) {
         const delay = Math.pow(2, retryNum) * 1000;
         setRetryCount(retryNum + 1);
-        setTimeout(() => sendMessage(userText, true, retryNum + 1), delay);
+        setTimeout(() => sendMessage(userText, targetRole, true, retryNum + 1), delay);
         return;
       }
     } finally {
-      setIsLoading(false);
+      setIsLoading(prev => ({ ...prev, [targetRole]: false }));
     }
-  }, [apiKey, project.id, activeRole, onMessageSent, onNeedApiKey, streamingText]);
+  }, [apiKey, project.id, activeRole, onMessageSent, onNeedApiKey]);
 
   const handleStop = () => {
-    abortRef.current?.abort();
-    setIsLoading(false);
-    setStreamingText('');
+    abortRefs.current[activeRole]?.abort();
+    setIsLoading(prev => ({ ...prev, [activeRole]: false }));
+    setStreamingText(prev => ({ ...prev, [activeRole]: '' }));
   };
 
   const handleClearRole = () => {
@@ -300,7 +303,7 @@ Continue IMMEDIATELY from that exact point. Just the next line of code.`;
       // Create builder instruction based on theme
       const instruction = `Concept is approved. Build the application using the theme: ${theme}. Generate all necessary frontend and backend files.`;
       // Trigger send message manually (we need to bypass useCallback deps for immediate call, but we can just use the function)
-      sendMessage(instruction);
+      sendMessage(instruction, 'builder');
     }, 100);
   };
 
@@ -312,14 +315,14 @@ Continue IMMEDIATELY from that exact point. Just the next line of code.`;
                                  messages.length > 0 && 
                                  messages[messages.length - 1].role === 'assistant' &&
                                  (project?.roles?.builder?.messages?.length || 0) === 0 &&
-                                 !isLoading;
+                                 !isLoading[activeRole];
 
   // Check for incomplete blocks (unclosed backticks)
   const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
   const isIncomplete = lastMessage && 
                        lastMessage.role === 'assistant' && 
                        (lastMessage.content.match(/```/g) || []).length % 2 !== 0 &&
-                       !isLoading;
+                       !isLoading[activeRole];
 
   return (
     <div className="chat-panel">
@@ -363,7 +366,7 @@ Continue IMMEDIATELY from that exact point. Just the next line of code.`;
           </div>
         )}
 
-        {messages.length === 0 && !streamingText && (
+        {messages.length === 0 && !streamingText[activeRole] && (
           <WelcomeScreen role={role} activeRole={activeRole} />
         )}
 
@@ -371,8 +374,8 @@ Continue IMMEDIATELY from that exact point. Just the next line of code.`;
           <ChatMessage key={msg.id || i} message={msg} role={activeRole} animDelay={i * 30} />
         ))}
 
-        {streamingText && <StreamingMessage text={streamingText} role={activeRole} />}
-        {isLoading && !streamingText && <ThinkingBubble role={role} retryCount={retryCount} />}
+        {streamingText[activeRole] && <StreamingMessage text={streamingText[activeRole]} role={activeRole} />}
+        {isLoading[activeRole] && !streamingText[activeRole] && <ThinkingBubble role={role} retryCount={retryCount} />}
 
         {shouldShowThemeConfirm && <ThemeConfirmPanel onConfirmTheme={handleThemeConfirm} />}
         {isIncomplete && <IncompleteBanner onContinue={() => sendMessage('continue')} />}
@@ -392,7 +395,7 @@ Continue IMMEDIATELY from that exact point. Just the next line of code.`;
 
       <PromptInput
         role={role}
-        isLoading={isLoading}
+        isLoading={isLoading[activeRole]}
         onSend={sendMessage}
         onStop={handleStop}
         hasConceptContext={hasConceptContext}
@@ -622,7 +625,7 @@ function PromptInput({ role, isLoading, onSend, onStop, hasConceptContext, proje
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
             rows={1}
-            disabled={isLoading}
+            disabled={isLoading[activeRole]}
           />
           {isLanjutkan && (
             <div className="lanjutkan-hint" style={{ color: role.color }}>

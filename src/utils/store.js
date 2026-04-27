@@ -395,8 +395,8 @@ If it's an API, use FastAPI or Flask. If it's a script, just use standard librar
 
 // ── Context Builder ────────────────────────────────────────
 // Token budget: target ≤ 40k chars total to stay well under 64k token limit.
-const CTX_MAX_MSG_CHARS = 2500;  // max chars per injected message
-const CTX_MAX_ROLE_MSGS = 8;     // max recent messages from current role
+const CTX_MAX_MSG_CHARS = 16000;  // max chars per injected message (increased from 2500 to keep code context)
+const CTX_MAX_ROLE_MSGS = 10;     // max recent messages from current role
 const CTX_MAX_CONCEPT_MSGS = 4;  // max concept messages to inject into builder
 
 function truncate(str, max) {
