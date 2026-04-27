@@ -124,11 +124,17 @@ export default function ChatPanel({
 
   useEffect(() => {
     const fresh = getProject(project.id);
-    setMessages(fresh?.roles[activeRole]?.messages || []);
+    setMessages(fresh?.roles?.[activeRole]?.messages || []);
     setStreamingText('');
     setError(null);
     setRetryCount(0);
     streamParsedPaths.current = new Set();
+    
+    return () => {
+      if (abortRef.current) {
+        abortRef.current.abort();
+      }
+    };
   }, [project.id, activeRole]);
 
   useEffect(() => {
@@ -150,7 +156,7 @@ export default function ChatPanel({
       setPendingUserMsg(userText);
       addMessage(project.id, activeRole, { role: 'user', content: userText });
       const fresh = getProject(project.id);
-      setMessages(fresh.roles[activeRole].messages);
+      setMessages(fresh?.roles?.[activeRole]?.messages || []);
     }
 
     const fresh = getProject(project.id);
@@ -167,7 +173,7 @@ export default function ChatPanel({
 
       const isResume = /(?:lanjutkan|continue|lanjut|next|teruskan)/i.test(userText.trim()) && userText.trim().length < 30;
       if (isResume) {
-        const lastAssistantMsg = [...(fresh.roles[activeRole].messages)].reverse().find(m => m.role === 'assistant');
+        const lastAssistantMsg = [...(fresh?.roles?.[activeRole]?.messages || [])].reverse().find(m => m.role === 'assistant');
         if (lastAssistantMsg) {
           const fullContent = lastAssistantMsg.content.trim();
           const allLines = fullContent.split('\n');
@@ -230,7 +236,7 @@ Continue IMMEDIATELY from that exact point. Just the next line of code.`;
       addMessage(project.id, activeRole, { role: 'assistant', content: fullText });
 
       const updated = getProject(project.id);
-      setMessages(updated.roles[activeRole].messages);
+      setMessages(updated?.roles?.[activeRole]?.messages || []);
       setStreamingText('');
       setRetryCount(0);
       setPendingUserMsg(null);
@@ -291,13 +297,13 @@ Continue IMMEDIATELY from that exact point. Just the next line of code.`;
   };
 
   const role = ROLES[activeRole];
-  const hasConceptContext = activeRole === 'builder' && project.roles.concept.messages.length > 0;
+  const hasConceptContext = activeRole === 'builder' && (project?.roles?.concept?.messages?.length || 0) > 0;
   
   // Show Theme Confirm Panel if Concept has messages, last message is from assistant, and Builder has no messages
   const shouldShowThemeConfirm = activeRole === 'concept' && 
                                  messages.length > 0 && 
                                  messages[messages.length - 1].role === 'assistant' &&
-                                 project.roles.builder.messages.length === 0 &&
+                                 (project?.roles?.builder?.messages?.length || 0) === 0 &&
                                  !isLoading;
 
   // Check for incomplete blocks (unclosed backticks)
@@ -311,7 +317,7 @@ Continue IMMEDIATELY from that exact point. Just the next line of code.`;
     <div className="chat-panel">
       <div className="role-tabs">
         {Object.values(ROLES).map(r => {
-          const count = project.roles[r.id]?.messages?.filter(m => m.role === 'user').length || 0;
+          const count = project?.roles?.[r.id]?.messages?.filter(m => m.role === 'user').length || 0;
           const isActive = activeRole === r.id;
           return (
             <button

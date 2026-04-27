@@ -73,6 +73,7 @@ export default function App() {
 
   const handleSelectProject = useCallback((id) => {
     setActiveProjectId(id);
+    setActiveProject(getProject(id));
     setActiveRole('concept');
   }, []);
 
@@ -81,6 +82,7 @@ export default function App() {
     const ps = getProjects(apiKey);
     setProjects(ps);
     setActiveProjectId(p.id);
+    setActiveProject(p);
     setActiveRole('concept');
     setViewMode('project');
     setShowNewProject(false);
