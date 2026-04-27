@@ -42,8 +42,8 @@ export default function SettingsModal({ currentKey, onSave, onClose, onClearData
   };
 
   return (
-    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal" style={{ maxWidth: 520 }}>
+    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()} style={{ overflowY: 'auto', padding: '20px 0' }}>
+      <div className="modal" style={{ maxWidth: 520, margin: 'auto' }}>
         <div className="modal-title">⚙ Settings</div>
         <div className="modal-subtitle">Configure your NVIDIA NIM API connection.</div>
 
