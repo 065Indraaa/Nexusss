@@ -103,10 +103,9 @@ export default function Sidebar({ open, projects, activeProjectId, globalChats =
 }
 
 function ProjectCard({ project, active, onSelect, onDelete }) {
-  const conceptCount = project.roles.concept.messages.filter(m => m.role === 'user').length;
-  const frontendCount = project.roles.frontend.messages.filter(m => m.role === 'user').length;
-  const backendCount = project.roles.backend.messages.filter(m => m.role === 'user').length;
-  const totalMsgs = conceptCount + frontendCount + backendCount;
+  const conceptCount = project.roles?.concept?.messages?.filter(m => m.role === 'user').length || 0;
+  const builderCount = project.roles?.builder?.messages?.filter(m => m.role === 'user').length || 0;
+  const totalMsgs = conceptCount + builderCount;
   const fileCount = project.generatedFiles?.length || 0;
   const typeIcon = TYPE_ICONS[project.projectType] || TYPE_ICONS.default;
   const typeColor = TYPE_COLORS[project.projectType] || TYPE_COLORS.default;
@@ -135,13 +134,8 @@ function ProjectCard({ project, active, onSelect, onDelete }) {
           />
           <div
             className="project-role-indicator"
-            style={{ '--role-color': 'var(--role-frontend)', opacity: frontendCount > 0 ? 1 : 0.2 }}
-            data-active={frontendCount > 0}
-          />
-          <div
-            className="project-role-indicator"
-            style={{ '--role-color': 'var(--role-backend)', opacity: backendCount > 0 ? 1 : 0.2 }}
-            data-active={backendCount > 0}
+            style={{ '--role-color': 'var(--role-builder)', opacity: builderCount > 0 ? 1 : 0.2 }}
+            data-active={builderCount > 0}
           />
         </div>
       </div>
